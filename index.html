@@ -100,6 +100,11 @@
             font-weight: 700;
         }
         
+        .logo p {
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+        
         .menu {
             list-style: none;
         }
@@ -1682,17 +1687,17 @@
     </div>
 
     <script>
-        // ========== إعدادات النظام ==========
+        // ========== إعدادات النظام المركزية ==========
         const CONFIG = {
-            // Firebase Configuration (بيانات اعتبارية - استخدم بيانات مشروعك الفعلية)
+            // إعدادات Firebase
             FIREBASE: {
-                apiKey: "AIzaSyDummy_Replace_With_Your_Key",
-                authDomain: "student-behavior-dummy.firebaseapp.com",
-                databaseURL: "https://student-behavior-dummy.firebaseio.com",
-                projectId: "student-behavior-dummy",
-                storageBucket: "student-behavior-dummy.appspot.com",
-                messagingSenderId: "1234567890",
-                appId: "1:1234567890:web:dummy_app_id"
+                apiKey: "AIzaSyDi74okoI5MlQbQD9eyLJTZLqpVoA83uNA",
+                authDomain: "students-behiver.firebaseapp.com",
+                databaseURL: "https://students-behiver-default-rtdb.firebaseio.com",
+                projectId: "students-behiver",
+                storageBucket: "students-behiver.firebasestorage.app",
+                messagingSenderId: "45870403633",
+                appId: "1:45870403633:web:525bf5a010e11fca774510"
             },
 
             // إعدادات النظام
@@ -1738,39 +1743,54 @@
         let isOnline = navigator.onLine;
         let isImporting = false;
         let importData = [];
+        let firebaseApp = null;
         let db = null;
         let isUsingFirebase = false;
         let lastSyncTime = null;
+        let syncInProgress = false;
+        let firebaseRetryCount = 0;
+        const MAX_RETRY_ATTEMPTS = 3;
         
         // ========== التهيئة ==========
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 جاري تهيئة التطبيق...');
             setupEventListeners();
             setupFileUpload();
             setupConnectionListener();
             initFirebase();
             loadLocalData();
             setTodayDate();
+            console.log('✅ اكتملت التهيئة بنجاح');
         });
 
-        // ========== إعداد Firebase ==========
+        // ========== إعداد Firebase محسّن ==========
         function initFirebase() {
             try {
-                // تحقق إذا كان لديك بيانات Firebase صحيحة
-                if (!CONFIG.FIREBASE.apiKey || CONFIG.FIREBASE.apiKey.includes('Replace')) {
-                    console.warn('⚠️ Firebase غير مُعد. سيتم استخدام التخزين المحلي فقط.');
+                console.log('🔧 جاري تهيئة Firebase...');
+                
+                // تحقق من بيانات Firebase
+                if (!CONFIG.FIREBASE.apiKey || !CONFIG.FIREBASE.projectId) {
+                    console.warn('⚠️ بيانات Firebase غير مكتملة');
                     isUsingFirebase = false;
+                    showToast('⚠️ Firebase غير مُعد. سيتم استخدام التخزين المحلي فقط', 'info');
                     return;
                 }
 
-                firebase.initializeApp(CONFIG.FIREBASE);
+                // تهيئة Firebase
+                firebaseApp = firebase.initializeApp(CONFIG.FIREBASE);
                 db = firebase.database();
-                isUsingFirebase = true;
                 
+                isUsingFirebase = true;
                 console.log('✅ Firebase متصل بنجاح');
-                syncDataWithFirebase();
+                
+                // مزامنة البيانات عند الاتصال
+                if (isOnline) {
+                    syncDataWithFirebase();
+                }
             } catch (error) {
-                console.warn('⚠️ خطأ في اتصال Firebase:', error.message);
+                console.error('❌ خطأ في Firebase:', error.message);
                 isUsingFirebase = false;
+                showToast('⚠️ تعذر الاتصال بـ Firebase. سيتم استخدام التخزين المحلي', 'warning');
             }
         }
 
@@ -1779,7 +1799,11 @@
             window.addEventListener('online', () => {
                 isOnline = true;
                 updateConnectionStatus();
-                if (isUsingFirebase) syncDataWithFirebase();
+                if (isUsingFirebase) {
+                    console.log('📡 تم استعادة الاتصال - جاري المزامنة...');
+                    syncDataWithFirebase();
+                }
+                showToast('✅ عاد الاتصال بالإنترنت!', 'success');
             });
 
             window.addEventListener('offline', () => {
@@ -1804,65 +1828,100 @@
             }
         }
 
-        // ========== مزامنة Firebase ==========
+        // ========== مزامنة Firebase محسّنة ==========
         function syncDataWithFirebase() {
-            if (!isUsingFirebase || !isOnline) return;
+            if (!isUsingFirebase || !isOnline || !currentUser || syncInProgress) return;
+
+            syncInProgress = true;
+            const userId = currentUser.id || 'default_user';
+            const startTime = Date.now();
 
             try {
-                if (currentUser) {
-                    const userId = currentUser.id;
-                    
-                    // تحميل الطلاب
-                    db.ref(`users/${userId}/students`).once('value')
-                        .then(snapshot => {
+                const promises = [];
+
+                // تحميل الطلاب
+                promises.push(
+                    db.ref(`users/${userId}/students`)
+                        .once('value', snapshot => {
                             const fbStudents = snapshot.val();
                             if (fbStudents) {
-                                students = Object.values(fbStudents);
-                                saveLocalData();
-                                loadStudents();
+                                const fbArray = Array.isArray(fbStudents) ? fbStudents : Object.values(fbStudents);
+                                if (JSON.stringify(fbArray) !== JSON.stringify(students)) {
+                                    students = fbArray;
+                                    loadStudents();
+                                    console.log('📥 تم تحديث بيانات الطلاب من Firebase');
+                                }
                             }
                         })
-                        .catch(error => console.error('خطأ في تحميل الطلاب:', error));
+                        .catch(error => {
+                            console.error('❌ خطأ في تحميل الطلاب من Firebase:', error);
+                            firebaseRetryCount++;
+                        })
+                );
 
-                    // تحميل الإنذارات
-                    db.ref(`users/${userId}/warnings`).once('value')
-                        .then(snapshot => {
+                // تحميل الإنذارات
+                promises.push(
+                    db.ref(`users/${userId}/warnings`)
+                        .once('value', snapshot => {
                             const fbWarnings = snapshot.val();
                             if (fbWarnings) {
-                                warnings = Object.values(fbWarnings);
-                                saveLocalData();
-                                loadWarnings();
-                                loadDashboardStats();
+                                const fbArray = Array.isArray(fbWarnings) ? fbWarnings : Object.values(fbWarnings);
+                                if (JSON.stringify(fbArray) !== JSON.stringify(warnings)) {
+                                    warnings = fbArray;
+                                    loadWarnings();
+                                    loadDashboardStats();
+                                    console.log('📥 تم تحديث الإنذارات من Firebase');
+                                }
                             }
                         })
-                        .catch(error => console.error('خطأ في تحميل الإنذارات:', error));
+                        .catch(error => {
+                            console.error('❌ خطأ في تحميل الإنذارات من Firebase:', error);
+                            firebaseRetryCount++;
+                        })
+                );
 
+                Promise.all(promises).then(() => {
+                    saveLocalData();
                     lastSyncTime = new Date();
-                }
+                    syncInProgress = false;
+                    firebaseRetryCount = 0;
+                    const syncDuration = Date.now() - startTime;
+                    console.log(`✅ اكتملت المزامنة في ${syncDuration}ms`);
+                });
+
             } catch (error) {
                 console.error('❌ خطأ في المزامنة:', error);
+                syncInProgress = false;
+                firebaseRetryCount++;
+                
+                if (firebaseRetryCount < MAX_RETRY_ATTEMPTS) {
+                    setTimeout(syncDataWithFirebase, 5000);
+                }
             }
         }
 
         function saveToFirebase() {
-            if (!isUsingFirebase || !isOnline || !currentUser) return;
+            if (!isUsingFirebase || !isOnline || !currentUser) {
+                console.log('⚠️ تعذر الحفظ إلى Firebase - لا إنترنت أو Firebase معطل');
+                return;
+            }
 
             try {
-                const userId = currentUser.id;
-                
+                const userId = currentUser.id || 'default_user';
+
                 // حفظ الطلاب
                 if (students.length > 0) {
                     db.ref(`users/${userId}/students`).set(students)
-                        .catch(error => console.error('خطأ في حفظ الطلاب:', error));
+                        .then(() => console.log('📤 تم حفظ الطلاب في Firebase'))
+                        .catch(error => console.error('❌ خطأ في حفظ الطلاب:', error));
                 }
 
                 // حفظ الإنذارات
                 if (warnings.length > 0) {
                     db.ref(`users/${userId}/warnings`).set(warnings)
-                        .catch(error => console.error('خطأ في حفظ الإنذارات:', error));
+                        .then(() => console.log('📤 تم حفظ الإنذارات في Firebase'))
+                        .catch(error => console.error('❌ خطأ في حفظ الإنذارات:', error));
                 }
-
-                lastSyncTime = new Date();
             } catch (error) {
                 console.error('❌ خطأ في الحفظ إلى Firebase:', error);
             }
@@ -1871,10 +1930,15 @@
         // ========== تخزين محلي محسّن ==========
         function saveLocalData() {
             try {
-                // تحقق من حجم البيانات
-                const dataSize = JSON.stringify({students, warnings}).length;
+                const dataToSave = {
+                    students: students,
+                    warnings: warnings,
+                    lastSync: new Date().toISOString()
+                };
+
+                const dataSize = JSON.stringify(dataToSave).length;
                 if (dataSize > 5242880) { // 5MB
-                    // احذف البيانات القديمة
+                    console.warn('⚠️ حجم البيانات كبير جداً');
                     const maxRecords = Math.floor(CONFIG.MAX_LOCAL_RECORDS / 2);
                     students = students.slice(-maxRecords);
                     warnings = warnings.slice(-maxRecords);
@@ -1888,6 +1952,8 @@
                 if (isUsingFirebase && isOnline) {
                     saveToFirebase();
                 }
+
+                console.log('💾 تم حفظ البيانات محلياً');
             } catch (e) {
                 if (e.name === 'QuotaExceededError') {
                     console.error('❌ انتهت مساحة التخزين المحلي');
@@ -1905,10 +1971,12 @@
                 
                 if (savedStudents) {
                     students = JSON.parse(savedStudents);
+                    console.log(`📂 تم تحميل ${students.length} طالب من التخزين المحلي`);
                 }
                 
                 if (savedWarnings) {
                     warnings = JSON.parse(savedWarnings);
+                    console.log(`📂 تم تحميل ${warnings.length} إنذار من التخزين المحلي`);
                 }
             } catch (e) {
                 console.error('❌ خطأ في تحميل البيانات المحلية:', e);
@@ -2165,7 +2233,7 @@
                 showToast('✅ تم تسجيل الدخول بنجاح!', 'success');
                 
                 // مزامنة مع Firebase عند تسجيل الدخول
-                if (isUsingFirebase) {
+                if (isUsingFirebase && isOnline) {
                     syncDataWithFirebase();
                 }
             } else {
@@ -2349,12 +2417,12 @@
             const file = event.target.files[0];
             if (!file) return;
 
-            // تحقق من امتداد الملف
             const validExtensions = ['xlsx', 'xls', 'csv'];
             const fileExtension = file.name.split('.').pop().toLowerCase();
             
             if (!validExtensions.includes(fileExtension)) {
                 showToast('❌ صيغة الملف غير صحيحة! استخدم xlsx أو xls أو csv', 'error');
+                document.getElementById('excelFile').value = '';
                 return;
             }
 
@@ -2363,8 +2431,9 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    if (!XLSX) {
-                        showToast('❌ مكتبة Excel لم تُحمل بعد!', 'error');
+                    if (typeof XLSX === 'undefined') {
+                        showToast('❌ مكتبة Excel لم تُحمل بعد! يرجى إعادة المحاولة.', 'error');
+                        console.error('XLSX غير متاح');
                         return;
                     }
 
@@ -2495,8 +2564,9 @@
 
         function downloadTemplate() {
             try {
-                if (!XLSX) {
-                    showToast('❌ مكتبة Excel لم تُحمل بعد!', 'error');
+                if (typeof XLSX === 'undefined') {
+                    showToast('❌ مكتبة Excel لم تُحمل بعد! جارٍ إعادة محاولة...', 'error');
+                    console.error('XLSX غير متاح');
                     return;
                 }
 
@@ -2543,17 +2613,9 @@
         
         function exportStudentsToExcel() {
             try {
-                if (!XLSX) {
+                if (typeof XLSX === 'undefined') {
                     showToast('❌ مكتبة Excel لم تُحمل بعد! جارٍ إعادة محاولة...', 'error');
-                    setTimeout(() => {
-                        // أعد محاولة التحميل
-                        if (!window.XLSX) {
-                            const script = document.createElement('script');
-                            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js';
-                            document.head.appendChild(script);
-                            script.onload = () => exportStudentsToExcel();
-                        }
-                    }, 2000);
+                    console.error('XLSX غير متاح');
                     return;
                 }
 
@@ -2587,6 +2649,7 @@
                 const fileName = 'قائمة_الطلاب_' + new Date().toISOString().split('T')[0] + '.xlsx';
                 XLSX.writeFile(workbook, fileName);
                 showToast('✅ تم تصدير البيانات بنجاح!', 'success');
+                console.log('📊 تم تصدير ' + students.length + ' طالب');
             } catch (error) {
                 console.error('خطأ في التصدير:', error);
                 showToast('❌ حدث خطأ في تصدير البيانات! ' + error.message, 'error');
@@ -3003,7 +3066,7 @@
         
         function exportReportToExcel() {
             try {
-                if (!XLSX) {
+                if (typeof XLSX === 'undefined') {
                     showToast('❌ مكتبة Excel لم تُحمل بعد!', 'error');
                     return;
                 }
@@ -3136,10 +3199,12 @@
 
         // المزامنة الدورية مع Firebase
         setInterval(() => {
-            if (isUsingFirebase && isOnline && currentUser) {
+            if (isUsingFirebase && isOnline && currentUser && !syncInProgress) {
                 syncDataWithFirebase();
             }
         }, CONFIG.AUTO_SYNC_INTERVAL);
+
+        console.log('✅ تم تحميل جميع سكريبتات التطبيق بنجاح');
     </script>
 </body>
-    </html>
+</html>
