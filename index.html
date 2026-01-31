@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام إدارة سلوك الطالب في الباص</title>
+    <title>نظام إدارة سلوك الطالب في الباص - احترافي</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Firebase SDK -->
+    
+    <!-- Firebase SDK v9+ -->
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
+    
     <!-- Excel Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
     
@@ -21,6 +23,7 @@
             --light: #f8fafc;
             --dark: #1e293b;
             --gray: #64748b;
+            --border: #e2e8f0;
         }
         
         * {
@@ -34,6 +37,37 @@
             background-color: #f1f5f9;
             color: #333;
             direction: rtl;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            z-index: 2001;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .connection-status.online {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .connection-status.offline {
+            background: #fee2e2;
+            color: #991b1b;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
         }
         
         .container {
@@ -64,12 +98,6 @@
             font-size: 1.1rem;
             margin-bottom: 5px;
             font-weight: 700;
-        }
-        
-        .logo p {
-            font-size: 0.8rem;
-            opacity: 0.85;
-            line-height: 1.4;
         }
         
         .menu {
@@ -125,12 +153,13 @@
         .search-box {
             flex: 1;
             min-width: 250px;
+            position: relative;
         }
         
         .search-box input {
             width: 100%;
             padding: 10px 16px;
-            border: 2px solid #e2e8f0;
+            border: 2px solid var(--border);
             border-radius: 8px;
             font-size: 0.95rem;
             transition: all 0.3s;
@@ -140,6 +169,41 @@
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 8px rgba(30, 64, 175, 0.15);
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            width: 100%;
+            max-height: 300px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            display: none;
+            z-index: 200;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-results.active {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .search-result-item:hover {
+            background: var(--light);
+        }
+
+        .search-result-item strong {
+            color: var(--primary);
         }
         
         .user-info {
@@ -194,6 +258,19 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             border-left: 5px solid var(--primary);
             transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(30, 64, 175, 0.05), transparent);
+            pointer-events: none;
         }
         
         .stat-card:hover {
@@ -218,6 +295,8 @@
             font-weight: 800;
             margin: 12px 0;
             color: var(--primary);
+            position: relative;
+            z-index: 1;
         }
         
         .stat-card.secondary .stat-value {
@@ -236,6 +315,14 @@
             color: var(--gray);
             font-size: 0.95rem;
             font-weight: 500;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat-subtitle {
+            font-size: 0.85rem;
+            color: var(--gray);
+            margin-top: 8px;
         }
         
         .table-container {
@@ -248,7 +335,7 @@
         
         .table-header {
             padding: 20px;
-            border-bottom: 2px solid #e2e8f0;
+            border-bottom: 2px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -270,7 +357,7 @@
         
         .table-controls input, .table-controls select {
             padding: 8px 12px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--border);
             border-radius: 6px;
             font-size: 0.9rem;
             transition: all 0.3s;
@@ -280,6 +367,30 @@
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 6px rgba(30, 64, 175, 0.1);
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .table-loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            color: var(--gray);
+        }
+
+        .loading-spinner-small {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
         }
         
         table {
@@ -291,17 +402,17 @@
         th, td {
             padding: 14px;
             text-align: right;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid var(--border);
         }
         
         th {
-            background-color: #f8fafc;
+            background-color: var(--light);
             font-weight: 700;
             color: var(--primary);
         }
         
         tr:hover {
-            background-color: #f8fafc;
+            background-color: var(--light);
         }
         
         .status {
@@ -378,7 +489,7 @@
             font-size: 0.85rem;
         }
         
-        .btn:hover {
+        .btn:hover:not(:disabled) {
             opacity: 0.9;
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -405,7 +516,7 @@
         input, select, textarea {
             width: 100%;
             padding: 11px 14px;
-            border: 2px solid #e2e8f0;
+            border: 2px solid var(--border);
             border-radius: 8px;
             font-size: 0.95rem;
             font-family: inherit;
@@ -450,7 +561,7 @@
             align-items: center;
             margin-bottom: 20px;
             padding-bottom: 15px;
-            border-bottom: 2px solid #e2e8f0;
+            border-bottom: 2px solid var(--border);
             flex-wrap: wrap;
             gap: 15px;
         }
@@ -469,6 +580,18 @@
             align-items: flex-start;
             gap: 15px;
             border-left: 4px solid;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         .alert.success {
@@ -488,11 +611,32 @@
             border-left-color: var(--danger);
             color: #7f1d1d;
         }
+
+        .alert.info {
+            background-color: #eff6ff;
+            border-left-color: var(--primary);
+            color: #1e3a8a;
+        }
         
         .alert i {
             font-size: 1.3rem;
             flex-shrink: 0;
             margin-top: 2px;
+        }
+
+        .alert-close {
+            background: none;
+            border: none;
+            color: currentColor;
+            cursor: pointer;
+            font-size: 1.2rem;
+            margin-left: auto;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .alert-close:hover {
+            opacity: 1;
         }
         
         .page {
@@ -546,7 +690,7 @@
             align-items: center;
             margin-bottom: 24px;
             padding-bottom: 15px;
-            border-bottom: 2px solid #e2e8f0;
+            border-bottom: 2px solid var(--border);
         }
         
         .modal-title {
@@ -687,6 +831,7 @@
             gap: 12px;
             z-index: 2000;
             animation: slideIn 0.3s ease-out;
+            max-width: 400px;
         }
 
         @keyframes slideIn {
@@ -700,13 +845,25 @@
             }
         }
 
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+
         .toast.success { border-left: 4px solid var(--secondary); }
         .toast.error { border-left: 4px solid var(--danger); }
         .toast.info { border-left: 4px solid var(--primary); }
+        .toast.warning { border-left: 4px solid var(--warning); }
 
         .import-preview {
-            background: #f8fafc;
-            border: 2px dashed #e2e8f0;
+            background: var(--light);
+            border: 2px dashed var(--border);
             border-radius: 8px;
             padding: 20px;
             margin: 20px 0;
@@ -730,7 +887,7 @@
 
         .preview-table td {
             padding: 8px;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid var(--border);
         }
 
         .preview-table tr:hover {
@@ -747,7 +904,7 @@
         .import-stat {
             text-align: center;
             padding: 15px;
-            background: #f8fafc;
+            background: var(--light);
             border-radius: 8px;
             border-left: 4px solid var(--primary);
         }
@@ -830,7 +987,86 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
+
+        .stats-breakdown {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .breakdown-item {
+            background: var(--light);
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            border-left: 3px solid var(--primary);
+        }
+
+        .breakdown-item strong {
+            display: block;
+            font-size: 1.5rem;
+            margin: 5px 0;
+            color: var(--primary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--gray);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .firebase-error {
+            background: #fef2f2;
+            border: 2px solid var(--danger);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            color: #7f1d1d;
+        }
+
+        .firebase-error strong {
+            display: block;
+            margin-bottom: 10px;
+            color: var(--danger);
+        }
+
+        .sync-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            z-index: 1999;
+        }
+
+        .sync-indicator.syncing {
+            background: #fffbeb;
+            color: #92400e;
+        }
+
+        .sync-indicator.synced {
+            background: #ecfdf5;
+            color: #065f46;
+        }
+
+        .sync-indicator.error {
+            background: #fef2f2;
+            color: #7f1d1d;
+        }
+
         @media (max-width: 1024px) {
             .sidebar {
                 width: 220px;
@@ -842,6 +1078,10 @@
             
             .stats-cards {
                 grid-template-columns: repeat(2, 1fr);
+            }
+
+            .import-stats {
+                grid-template-columns: 1fr;
             }
         }
         
@@ -916,8 +1156,18 @@
                 width: 100%;
             }
 
-            .import-stats {
+            .stats-breakdown {
                 grid-template-columns: 1fr;
+            }
+
+            .connection-status {
+                right: 10px;
+                left: auto;
+            }
+
+            .sync-indicator {
+                right: 20px;
+                left: auto;
             }
         }
         
@@ -950,10 +1200,28 @@
             .modal-content {
                 padding: 20px;
             }
+
+            .toast {
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- حالة الاتصال -->
+    <div class="connection-status online" id="connectionStatus">
+        <i class="fas fa-wifi"></i>
+        <span id="connectionText">متصل بالإنترنت</span>
+    </div>
+
+    <!-- مؤشر المزامنة -->
+    <div class="sync-indicator synced" id="syncIndicator" style="display: none;">
+        <i class="fas fa-cloud"></i>
+        <span id="syncText">جاري المزامنة...</span>
+    </div>
+
     <!-- نموذج تسجيل الدخول -->
     <div class="login-container" id="loginPage">
         <div class="login-box">
@@ -965,15 +1233,20 @@
             <h2>تسجيل الدخول</h2>
             <form id="loginForm" onsubmit="login(event)">
                 <div class="form-group">
-                    <label>اسم المستخدم</label>
+                    <label><i class="fas fa-user"></i> اسم المستخدم</label>
                     <input type="text" id="username" placeholder="أدخل اسم المستخدم" required>
                 </div>
                 <div class="form-group">
-                    <label>كلمة المرور</label>
+                    <label><i class="fas fa-lock"></i> كلمة المرور</label>
                     <input type="password" id="password" placeholder="أدخل كلمة المرور" required>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">دخول</button>
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+                    <i class="fas fa-sign-in-alt"></i> دخول
+                </button>
             </form>
+            <p style="text-align: center; margin-top: 20px; color: var(--gray); font-size: 0.9rem;">
+                حساب تجريبي: transportation / 606486
+            </p>
         </div>
     </div>
     
@@ -983,14 +1256,14 @@
         <div class="sidebar">
             <div class="logo">
                 <h1>🚌 سلوك الطالب</h1>
-                <p>مدرسة الثروات الوطنية الخاصة</p>
+                <p>النظام الاحترافي</p>
             </div>
             <ul class="menu">
                 <li><a class="menu-link active" data-page="dashboard"><i class="fas fa-tachometer-alt"></i> <span>لوحة التحكم</span></a></li>
                 <li><a class="menu-link" data-page="students"><i class="fas fa-user-graduate"></i> <span>إدارة الطلاب</span></a></li>
-                <li><a class="menu-link" data-page="warnings"><i class="fas fa-exclamation-triangle"></i> <span>إدارة الإنذارات</span></a></li>
+                <li><a class="menu-link" data-page="warnings"><i class="fas fa-exclamation-triangle"></i> <span>الإنذارات</span></a></li>
                 <li><a class="menu-link" data-page="reports"><i class="fas fa-chart-bar"></i> <span>التقارير</span></a></li>
-                <li><a onclick="logout()" style="cursor: pointer;"><i class="fas fa-sign-out-alt"></i> <span>تسجيل الخروج</span></a></li>
+                <li><a onclick="logout()" style="cursor: pointer;"><i class="fas fa-sign-out-alt"></i> <span>خروج</span></a></li>
             </ul>
         </div>
         
@@ -998,7 +1271,8 @@
         <div class="main-content">
             <div class="header">
                 <div class="search-box">
-                    <input type="text" placeholder="🔍 بحث سريع..." id="globalSearch" onkeyup="globalSearch()">
+                    <input type="text" placeholder="🔍 ابحث عن طالب أو إنذار..." id="globalSearch" onkeyup="globalSearch()">
+                    <div class="search-results" id="searchResults"></div>
                 </div>
                 <div class="user-info">
                     <div>
@@ -1020,21 +1294,45 @@
                         <div class="stat-card">
                             <div class="stat-title">👥 إجمالي الطلاب</div>
                             <div class="stat-value" id="totalStudents">0</div>
+                            <div class="stat-subtitle">طالب مسجل</div>
                         </div>
                         
                         <div class="stat-card warning">
                             <div class="stat-title">⚠️ إنذارات اليوم</div>
                             <div class="stat-value" id="todayWarnings">0</div>
+                            <div class="stat-subtitle">إنذار جديد</div>
                         </div>
                         
                         <div class="stat-card danger">
                             <div class="stat-title">🚫 إنذارات ثالثة</div>
                             <div class="stat-value" id="thirdWarnings">0</div>
+                            <div class="stat-subtitle">تحتاج متابعة فورية</div>
                         </div>
                         
                         <div class="stat-card secondary">
                             <div class="stat-title">📁 إنذارات مؤرشفة</div>
                             <div class="stat-value" id="archivedWarnings">0</div>
+                            <div class="stat-subtitle">منتهية الصلاحية</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">📈 إحصائيات مفصلة</div>
+                        </div>
+                        <div class="stats-breakdown">
+                            <div class="breakdown-item">
+                                <div>الإنذارات النشطة</div>
+                                <strong id="activeWarningsCount">0</strong>
+                            </div>
+                            <div class="breakdown-item" style="border-left-color: var(--warning);">
+                                <div>هذا الأسبوع</div>
+                                <strong id="weekWarningsCount">0</strong>
+                            </div>
+                            <div class="breakdown-item" style="border-left-color: var(--secondary);">
+                                <div>معدل الإنذار</div>
+                                <strong id="warningRate">0%</strong>
+                            </div>
                         </div>
                     </div>
                     
@@ -1043,7 +1341,7 @@
                             <h3>⚠️ آخر الإنذارات</h3>
                             <button class="btn btn-primary btn-sm" onclick="showPage('warnings')">عرض الكل</button>
                         </div>
-                        <div style="overflow-x: auto;">
+                        <div class="table-wrapper">
                             <table>
                                 <thead>
                                     <tr>
@@ -1055,7 +1353,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="recentWarningsTable">
-                                    <tr><td colspan="5" class="text-center text-muted">لا توجد بيانات</td></tr>
+                                    <tr><td colspan="5" class="text-center text-muted">جاري التحميل...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1067,16 +1365,16 @@
                     <div class="page-title">
                         <h2>👥 إدارة الطلاب</h2>
                         <div class="title-actions">
-                            <button class="btn btn-primary" onclick="showAddStudentModal()"><i class="fas fa-plus"></i> إضافة طالب</button>
-                            <button class="btn btn-secondary" onclick="showImportModal()"><i class="fas fa-file-excel"></i> استيراد إكسل</button>
-                            <button class="btn btn-warning" onclick="downloadTemplate()"><i class="fas fa-download"></i> تحميل النموذج</button>
-                            <button class="btn btn-warning" onclick="exportStudentsToExcel()"><i class="fas fa-download"></i> تصدير إكسل</button>
+                            <button class="btn btn-primary" onclick="showAddStudentModal()"><i class="fas fa-plus"></i> إضافة</button>
+                            <button class="btn btn-secondary" onclick="showImportModal()"><i class="fas fa-upload"></i> استيراد</button>
+                            <button class="btn btn-warning" onclick="downloadTemplate()"><i class="fas fa-download"></i> نموذج</button>
+                            <button class="btn btn-warning" onclick="exportStudentsToExcel()"><i class="fas fa-download"></i> تصدير</button>
                         </div>
                     </div>
                     
                     <div class="advanced-search">
                         <div class="form-row">
-                            <input type="text" placeholder="🔍 البحث عن الطالب أو رقم الاسيس..." id="studentSearch" onkeyup="filterStudents()">
+                            <input type="text" placeholder="🔍 ابحث عن الطالب..." id="studentSearch" onkeyup="filterStudents()">
                             <select id="studentClassFilter" onchange="filterStudents()">
                                 <option value="">-- جميع الصفوف --</option>
                                 <option value="KG1">KG1</option>
@@ -1102,24 +1400,11 @@
                             <h3>📋 قائمة الطلاب</h3>
                             <span style="color: var(--gray); font-size: 0.9rem;">إجمالي: <strong id="studentCount">0</strong> طالب</span>
                         </div>
-                        <div style="overflow-x: auto;">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>رقم الاسيس</th>
-                                        <th>الاسم</th>
-                                        <th>الصف</th>
-                                        <th>الشعبة</th>
-                                        <th>المنطقة</th>
-                                        <th>رقم الوالد</th>
-                                        <th>الإنذارات</th>
-                                        <th>الإجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="studentsTable">
-                                    <tr><td colspan="8" class="text-center text-muted">جاري التحميل...</td></tr>
-                                </tbody>
-                            </table>
+                        <div class="table-wrapper" id="studentsTableWrapper">
+                            <div class="table-loading">
+                                <span>جاري التحميل</span>
+                                <div class="loading-spinner-small"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1171,9 +1456,8 @@
                             </div>
                             
                             <div class="form-group">
-                                <label>صيغة الإنذار (يتم كتابتها من قبل المشرف) *</label>
-                                <textarea id="warningContent" placeholder="أدخل نص الإنذار..." required></textarea>
-                                <small style="color: var(--gray); margin-top: 5px; display: block;">هذا هو النص الذي سيتم إرساله لولي الأمر عبر الواتساب</small>
+                                <label>صيغة الإنذار *</label>
+                                <textarea id="warningContent" placeholder="أدخل نص الإنذار الذي سيُرسل لولي الأمر..." required></textarea>
                             </div>
                             
                             <div class="form-group">
@@ -1207,7 +1491,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div style="overflow-x: auto;">
+                        <div class="table-wrapper">
                             <table>
                                 <thead>
                                     <tr>
@@ -1230,7 +1514,7 @@
                 <!-- التقارير -->
                 <div class="page" id="reports">
                     <div class="page-title">
-                        <h2>📊 التقارير</h2>
+                        <h2>📊 التقارير والتحليلات</h2>
                     </div>
                     
                     <div class="card">
@@ -1247,6 +1531,7 @@
                                         <option value="student">تقرير عن طالب معين</option>
                                         <option value="period">تقرير الفترة الزمنية</option>
                                         <option value="summary">ملخص عام</option>
+                                        <option value="class">تقرير الصف</option>
                                     </select>
                                 </div>
                                 
@@ -1254,6 +1539,27 @@
                                     <label>الطالب</label>
                                     <select id="reportStudent">
                                         <option value="">-- اختر الطالب --</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" id="classSelectGroup" style="display: none;">
+                                    <label>الصف</label>
+                                    <select id="reportClass">
+                                        <option value="">-- اختر الصف --</option>
+                                        <option value="KG1">KG1</option>
+                                        <option value="KG2">KG2</option>
+                                        <option value="Grade 1">Grade 1</option>
+                                        <option value="Grade 2">Grade 2</option>
+                                        <option value="Grade 3">Grade 3</option>
+                                        <option value="Grade 4">Grade 4</option>
+                                        <option value="Grade 5">Grade 5</option>
+                                        <option value="Grade 6">Grade 6</option>
+                                        <option value="Grade 7">Grade 7</option>
+                                        <option value="Grade 8">Grade 8</option>
+                                        <option value="Grade 9">Grade 9</option>
+                                        <option value="Grade 10">Grade 10</option>
+                                        <option value="Grade 11">Grade 11</option>
+                                        <option value="Grade 12">Grade 12</option>
                                     </select>
                                 </div>
                             </div>
@@ -1352,10 +1658,9 @@
                 <div class="form-group">
                     <label>رقم ولي الأمر (مع مفتاح الدولة) *</label>
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <span style="font-weight: 600; color: var(--primary); background: #f1f5f9; padding: 10px 12px; border-radius: 6px; white-space: nowrap;">+971</span>
+                        <span style="font-weight: 600; color: var(--primary); background: var(--light); padding: 10px 12px; border-radius: 6px; white-space: nowrap;">+971</span>
                         <input type="tel" id="parentPhone" placeholder="5xxxxxxxx (بدون الصفر)" maxlength="9" required>
                     </div>
-                    <small style="color: var(--gray); margin-top: 5px; display: block;">أدخل الرقم بدون الصفر أو +971</small>
                 </div>
                 
                 <div class="form-actions">
@@ -1409,14 +1714,6 @@
                     <div class="import-preview" id="importPreview"></div>
                 </div>
                 
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0; display: none;" id="templateInfo">
-                    <p style="font-weight: 600; margin-bottom: 12px; color: var(--primary);">📋 صيغة الملف المطلوبة:</p>
-                    <p style="font-size: 0.9rem; line-height: 1.6; color: var(--gray);">
-                        يجب أن يحتوي الملف على الأعمدة التالية:<br>
-                        <strong>رقم الاسيس | الاسم | الصف | الشعبة | المنطقة | رقم الوالد</strong>
-                    </p>
-                </div>
-                
                 <div class="form-actions">
                     <button type="submit" class="btn btn-secondary" id="importBtn" disabled><i class="fas fa-upload"></i> استيراد</button>
                     <button type="button" class="btn btn-outline" onclick="closeImportModal()"><i class="fas fa-times"></i> إلغاء</button>
@@ -1425,11 +1722,11 @@
         </div>
     </div>
 
-    <!-- مودال عرض تفاصيل الطالب -->
+    <!-- مودال عرض التفاصيل -->
     <div class="modal" id="studentDetailModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title" id="studentDetailTitle">تفاصيل الطالب</h3>
+                <h3 class="modal-title" id="studentDetailTitle">التفاصيل</h3>
                 <button type="button" class="close-modal" onclick="closeStudentDetailModal()">×</button>
             </div>
             <div id="studentDetailContent"></div>
@@ -1439,41 +1736,191 @@
     <script>
         // ========== متغيرات عامة ==========
         let db = null;
+        let auth = null;
         let currentUser = null;
         let students = [];
         let warnings = [];
-        let filteredWarningsForReport = [];
-        let importData = [];
+        let isOnline = navigator.onLine;
         let isImporting = false;
+        let importData = [];
+        let isSyncing = false;
         
         // ========== تهيئة Firebase ==========
         const firebaseConfig = {
-            apiKey: "AIzaSyDE4dDRBvnwrOslrWfozq-PggV5ZsIFHxY",
-            authDomain: "students-problems-c5675.firebaseapp.com",
-            databaseURL: "https://students-problems-c5675-default-rtdb.firebaseio.com",
-            projectId: "students-problems-c5675",
-            storageBucket: "students-problems-c5675.firebasestorage.app",
-            messagingSenderId: "177863466793",
-            appId: "1:177863466793:web:8f7bab519baec060e56138"
+            apiKey: "AIzaSyDi74okoI5MlQbQD9eyLJTZLqpVoA83uNA",
+            authDomain: "students-behiver.firebaseapp.com",
+            databaseURL: "https://students-behiver-default-rtdb.firebaseio.com",
+            projectId: "students-behiver",
+            storageBucket: "students-behiver.firebasestorage.app",
+            messagingSenderId: "45870403633",
+            appId: "1:45870403633:web:525bf5a010e11fca774510"
         };
 
-        try {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.database();
-            console.log('✅ Firebase تم تهيئته بنجاح');
-        } catch (error) {
-            console.error('❌ خطأ في تهيئة Firebase:', error);
+        // التهيئة الآمنة لـ Firebase
+        function initializeFirebase() {
+            try {
+                if (!window.firebase) {
+                    console.error('❌ Firebase SDK لم يتم تحميله');
+                    return false;
+                }
+
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                }
+                
+                db = firebase.database();
+                auth = firebase.auth();
+                
+                console.log('✅ Firebase تم تهيئته بنجاح');
+                return true;
+            } catch (error) {
+                console.error('❌ خطأ في تهيئة Firebase:', error);
+                showFirebaseError(error);
+                return false;
+            }
+        }
+
+        function showFirebaseError(error) {
+            const errorMsg = error.message || 'خطأ في الاتصال بـ Firebase';
+            showToast(`⚠️ تنبيه: ${errorMsg}. سيتم استخدام التخزين المحلي`, 'warning');
         }
         
         // ========== التهيئة ==========
         document.addEventListener('DOMContentLoaded', () => {
             setupEventListeners();
             setupFileUpload();
-            if (db) {
-                loadFirebaseData();
-            }
+            setupConnectionListener();
+            loadLocalData();
             setTodayDate();
+            initializeFirebase();
         });
+
+        // ========== مراقبة حالة الاتصال ==========
+        function setupConnectionListener() {
+            window.addEventListener('online', () => {
+                isOnline = true;
+                updateConnectionStatus();
+                if (db && !isSyncing) {
+                    syncDataWithFirebase();
+                }
+            });
+
+            window.addEventListener('offline', () => {
+                isOnline = false;
+                updateConnectionStatus();
+                showToast('⚠️ فقدت الاتصال بالإنترنت. البيانات محفوظة محلياً', 'warning');
+            });
+        }
+
+        function updateConnectionStatus() {
+            const status = document.getElementById('connectionStatus');
+            const text = document.getElementById('connectionText');
+            
+            if (isOnline) {
+                status.classList.remove('offline');
+                status.classList.add('online');
+                text.textContent = 'متصل بالإنترنت';
+            } else {
+                status.classList.remove('online');
+                status.classList.add('offline');
+                text.textContent = 'غير متصل بالإنترنت';
+            }
+        }
+
+        function showSyncIndicator(state) {
+            const indicator = document.getElementById('syncIndicator');
+            const text = document.getElementById('syncText');
+            
+            indicator.style.display = 'flex';
+            indicator.className = 'sync-indicator ' + state;
+            
+            switch(state) {
+                case 'syncing':
+                    text.textContent = '⟳ جاري المزامنة...';
+                    break;
+                case 'synced':
+                    text.textContent = '✓ تمت المزامنة بنجاح';
+                    setTimeout(() => {
+                        indicator.style.display = 'none';
+                    }, 3000);
+                    break;
+                case 'error':
+                    text.textContent = '✕ خطأ في المزامنة';
+                    break;
+            }
+        }
+
+        // ========== مزامنة البيانات ==========
+        async function syncDataWithFirebase() {
+            if (!db || isSyncing || !isOnline) return;
+            
+            isSyncing = true;
+            showSyncIndicator('syncing');
+            
+            try {
+                // تحديث الطلاب
+                for (const student of students) {
+                    const id = student.id || student.firebaseId;
+                    if (id) {
+                        await db.ref('students/' + id).set(student).catch(e => {
+                            console.warn('خطأ في تحديث الطالب:', id, e);
+                        });
+                    }
+                }
+                
+                // تحديث الإنذارات
+                for (const warning of warnings) {
+                    const id = warning.id || warning.firebaseId;
+                    if (id) {
+                        await db.ref('warnings/' + id).set(warning).catch(e => {
+                            console.warn('خطأ في تحديث الإنذار:', id, e);
+                        });
+                    }
+                }
+                
+                showSyncIndicator('synced');
+                console.log('✅ تمت المزامنة بنجاح');
+            } catch (error) {
+                console.error('❌ خطأ في المزامنة:', error);
+                showSyncIndicator('error');
+            } finally {
+                isSyncing = false;
+            }
+        }
+
+        // ========== تخزين محلي آمن ==========
+        function saveLocalData() {
+            localStorage.setItem('students', JSON.stringify(students));
+            localStorage.setItem('warnings', JSON.stringify(warnings));
+            localStorage.setItem('lastSync', new Date().toISOString());
+        }
+
+        function loadLocalData() {
+            const savedStudents = localStorage.getItem('students');
+            const savedWarnings = localStorage.getItem('warnings');
+            
+            if (savedStudents) {
+                try {
+                    students = JSON.parse(savedStudents);
+                } catch (e) {
+                    console.error('خطأ في تحميل الطلاب:', e);
+                    students = [];
+                }
+            }
+            
+            if (savedWarnings) {
+                try {
+                    warnings = JSON.parse(savedWarnings);
+                } catch (e) {
+                    console.error('خطأ في تحميل الإنذارات:', e);
+                    warnings = [];
+                }
+            }
+            
+            loadStudents();
+            loadWarnings();
+            loadDashboardStats();
+        }
         
         function setupEventListeners() {
             document.querySelectorAll('.menu-link').forEach(link => {
@@ -1488,7 +1935,6 @@
             const fileInput = document.getElementById('excelFile');
             const fileInputLabel = document.getElementById('fileInputLabel');
 
-            // Drag and drop
             fileInputLabel.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 fileInputLabel.classList.add('active');
@@ -1507,8 +1953,6 @@
                     previewImportFile({ target: { files: files } });
                 }
             });
-
-            fileInput.addEventListener('change', previewImportFile);
         }
         
         function setTodayDate() {
@@ -1519,64 +1963,81 @@
         
         // ========== تحميل البيانات من Firebase ==========
         function loadFirebaseData() {
-            loadStudentsFromFirebase();
-            loadWarningsFromFirebase();
-        }
-        
-        function loadStudentsFromFirebase() {
-            db.ref('students').on('value', snapshot => {
-                students = [];
-                const data = snapshot.val();
-                if (data) {
-                    Object.keys(data).forEach(key => {
-                        students.push({
-                            ...data[key],
-                            firebaseId: key
+            if (!db || !isOnline) return;
+            
+            try {
+                db.ref('students').on('value', snapshot => {
+                    const data = snapshot.val();
+                    if (data) {
+                        students = [];
+                        Object.keys(data).forEach(key => {
+                            students.push({
+                                ...data[key],
+                                firebaseId: key
+                            });
                         });
-                    });
-                }
-                loadStudents();
-                updateStudentSelects();
-            });
-        }
-        
-        function loadWarningsFromFirebase() {
-            db.ref('warnings').on('value', snapshot => {
-                warnings = [];
-                const data = snapshot.val();
-                if (data) {
-                    Object.keys(data).forEach(key => {
-                        warnings.push({
-                            ...data[key],
-                            firebaseId: key
+                        saveLocalData();
+                        loadStudents();
+                        updateStudentSelects();
+                    }
+                }, error => {
+                    console.error('❌ خطأ في قراءة الطلاب:', error);
+                    showFirebaseError(error);
+                });
+
+                db.ref('warnings').on('value', snapshot => {
+                    const data = snapshot.val();
+                    if (data) {
+                        warnings = [];
+                        Object.keys(data).forEach(key => {
+                            warnings.push({
+                                ...data[key],
+                                firebaseId: key
+                            });
                         });
-                    });
-                }
-                loadWarnings();
-                loadDashboardStats();
-            });
+                        saveLocalData();
+                        loadWarnings();
+                        loadDashboardStats();
+                    }
+                }, error => {
+                    console.error('❌ خطأ في قراءة الإنذارات:', error);
+                    showFirebaseError(error);
+                });
+            } catch (error) {
+                console.error('❌ خطأ عام في تحميل البيانات:', error);
+                showFirebaseError(error);
+            }
         }
         
-        // ========== تحميل البيانات الأولية ==========
-        function loadInitialData() {
-            loadDashboardStats();
-            loadStudents();
-            loadWarnings();
-            updateStudentSelects();
-        }
-        
+        // ========== وظائف الإحصائيات ==========
         function loadDashboardStats() {
             const today = new Date().toISOString().split('T')[0];
             const todayWarningsCount = warnings.filter(w => w.date === today && w.status === 'active').length;
             const thirdWarningsCount = warnings.filter(w => w.type === '3' && w.status === 'active').length;
             const archivedCount = warnings.filter(w => w.status === 'archived').length;
+            const activeWarningsCount = warnings.filter(w => w.status === 'active').length;
+            
+            // حساب الإنذارات هذا الأسبوع
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            const weekStart = weekAgo.toISOString().split('T')[0];
+            const weekWarningsCount = warnings.filter(w => w.date >= weekStart && w.status === 'active').length;
+            
+            // معدل الإنذار
+            const warningRate = students.length > 0 ? Math.round((activeWarningsCount / students.length) * 100) : 0;
             
             document.getElementById('totalStudents').textContent = students.length;
             document.getElementById('todayWarnings').textContent = todayWarningsCount;
             document.getElementById('thirdWarnings').textContent = thirdWarningsCount;
             document.getElementById('archivedWarnings').textContent = archivedCount;
+            document.getElementById('activeWarningsCount').textContent = activeWarningsCount;
+            document.getElementById('weekWarningsCount').textContent = weekWarningsCount;
+            document.getElementById('warningRate').textContent = warningRate + '%';
             
-            const recentWarnings = warnings.filter(w => w.status === 'active').sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+            // عرض آخر الإنذارات
+            const recentWarnings = warnings.filter(w => w.status === 'active')
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .slice(0, 5);
             const recentTable = document.getElementById('recentWarningsTable');
             recentTable.innerHTML = '';
             
@@ -1589,7 +2050,7 @@
                     row.innerHTML = `
                         <td><strong>${w.studentName}</strong></td>
                         <td>${w.violation}</td>
-                        <td><span class="badge badge-${w.type === '3' ? 'danger' : w.type === '2' ? 'warning' : 'primary'}">${typeText}</span></td>
+                        <td><span class="badge badge-${w.type === '3' ? 'danger' : w.type === '2' ? 'warning' : 'primary'}">الإنذار ${typeText}</span></td>
                         <td>${formatDate(w.date)}</td>
                         <td><span class="status regular">نشط</span></td>
                     `;
@@ -1597,17 +2058,65 @@
                 });
             }
             
+            // تنبيهات هامة
+            const alertDiv = document.getElementById('dashboardAlert');
+            alertDiv.innerHTML = '';
+            
             if (thirdWarningsCount > 0) {
-                const alertDiv = document.getElementById('dashboardAlert');
-                alertDiv.innerHTML = `<div class="alert danger"><i class="fas fa-exclamation-circle"></i><div>⚠️ تنبيه هام: هناك <strong>${thirdWarningsCount}</strong> طالب وصل للإنذار الثالث ويحتاج إلى متابعة فورية!</div></div>`;
+                const alert = document.createElement('div');
+                alert.className = 'alert danger';
+                alert.innerHTML = `
+                    <i class="fas fa-exclamation-circle"></i>
+                    <div>⚠️ تنبيه هام: هناك <strong>${thirdWarningsCount}</strong> طالب وصل للإنذار الثالث ويحتاج إلى متابعة فورية!</div>
+                    <button class="alert-close" onclick="this.parentElement.style.display='none';">×</button>
+                `;
+                alertDiv.appendChild(alert);
+            }
+
+            if (todayWarningsCount > 0) {
+                const alert = document.createElement('div');
+                alert.className = 'alert warning';
+                alert.innerHTML = `
+                    <i class="fas fa-bell"></i>
+                    <div>تم إصدار <strong>${todayWarningsCount}</strong> إنذار اليوم</div>
+                    <button class="alert-close" onclick="this.parentElement.style.display='none';">×</button>
+                `;
+                alertDiv.appendChild(alert);
             }
         }
         
         function loadStudents() {
-            const table = document.getElementById('studentsTable');
+            const wrapper = document.getElementById('studentsTableWrapper');
+            if (!wrapper) return;
+            
+            wrapper.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>رقم الاسيس</th>
+                            <th>الاسم</th>
+                            <th>الصف</th>
+                            <th>الشعبة</th>
+                            <th>المنطقة</th>
+                            <th>رقم الوالد</th>
+                            <th>الإنذارات</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsTable">
+                    </tbody>
+                </table>
+            `;
+            
+            const tbody = document.getElementById('studentsTable');
             const count = document.getElementById('studentCount');
             count.textContent = students.length;
-            table.innerHTML = '';
+            tbody.innerHTML = '';
+            
+            if (students.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">لا توجد بيانات طلاب</td></tr>';
+                return;
+            }
             
             students.forEach(student => {
                 const row = document.createElement('tr');
@@ -1624,13 +2133,13 @@
                     <td>${warningBadge}</td>
                     <td>
                         <div class="action-buttons">
-                            <button class="btn btn-sm btn-outline" onclick="viewStudentDetails('${student.id}')"><i class="fas fa-eye"></i></button>
-                            <button class="btn btn-sm btn-warning" onclick="showPage('warnings'); document.getElementById('warningStudent').value = '${student.id}';" title="إصدار إنذار"><i class="fas fa-exclamation-triangle"></i></button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteStudent('${student.id}')"><i class="fas fa-trash"></i></button>
+                            <button class="btn btn-sm btn-outline" onclick="viewStudentDetails('${student.id}')" title="عرض التفاصيل"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-sm btn-warning" onclick="goToWarnings('${student.id}')" title="إصدار إنذار"><i class="fas fa-exclamation-triangle"></i></button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteStudent('${student.id}')" title="حذف"><i class="fas fa-trash"></i></button>
                         </div>
                     </td>
                 `;
-                table.appendChild(row);
+                tbody.appendChild(row);
             });
             
             updateStudentSelects();
@@ -1640,31 +2149,32 @@
             const table = document.getElementById('warningsTable');
             table.innerHTML = '';
             
-            const activeWarnings = warnings.filter(w => w.status === 'active');
+            const allWarnings = warnings.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
             
-            if (activeWarnings.length === 0) {
-                table.innerHTML = '<tr><td colspan="6" class="text-center text-muted">لا توجد إنذارات نشطة</td></tr>';
-            } else {
-                activeWarnings.forEach(w => {
-                    const typeText = { '1': 'الأول', '2': 'الثاني', '3': 'الثالث' }[w.type];
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td><strong>${w.studentName}</strong></td>
-                        <td><span class="badge badge-${w.type === '3' ? 'danger' : w.type === '2' ? 'warning' : 'primary'}">الإنذار ${typeText}</span></td>
-                        <td>${w.violation}</td>
-                        <td>${formatDate(w.date)}</td>
-                        <td><span class="status regular">نشط</span></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn btn-sm btn-outline" onclick="viewWarningDetails('${w.id}')"><i class="fas fa-eye"></i></button>
-                                <button class="btn btn-sm btn-secondary" onclick="archiveWarning('${w.id}')" title="أرشفة"><i class="fas fa-archive"></i></button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteWarning('${w.id}')"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </td>
-                    `;
-                    table.appendChild(row);
-                });
+            if (allWarnings.length === 0) {
+                table.innerHTML = '<tr><td colspan="6" class="text-center text-muted">لا توجد إنذارات</td></tr>';
+                return;
             }
+            
+            allWarnings.forEach(w => {
+                const typeText = { '1': 'الأول', '2': 'الثاني', '3': 'الثالث' }[w.type];
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${w.studentName}</strong></td>
+                    <td><span class="badge badge-${w.type === '3' ? 'danger' : w.type === '2' ? 'warning' : 'primary'}">الإنذار ${typeText}</span></td>
+                    <td>${w.violation}</td>
+                    <td>${formatDate(w.date)}</td>
+                    <td><span class="status ${w.status === 'active' ? 'regular' : 'archived'}">${w.status === 'active' ? 'نشط' : 'مؤرشف'}</span></td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-sm btn-outline" onclick="viewWarningDetails('${w.id}')" title="التفاصيل"><i class="fas fa-eye"></i></button>
+                            ${w.status === 'active' ? `<button class="btn btn-sm btn-secondary" onclick="archiveWarning('${w.id}')" title="أرشفة"><i class="fas fa-archive"></i></button>` : ''}
+                            <button class="btn btn-sm btn-danger" onclick="deleteWarning('${w.id}')" title="حذف"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                `;
+                table.appendChild(row);
+            });
         }
         
         function updateStudentSelects() {
@@ -1681,23 +2191,24 @@
                         option.textContent = `${student.name} (${student.id}) - ${student.grade}`;
                         s.appendChild(option);
                     });
-                    s.value = currentValue;
+                    if (currentValue) s.value = currentValue;
                 }
             });
         }
         
-        // ========== وظائف تسجيل الدخول ==========
+        // ========== تسجيل الدخول ==========
         function login(e) {
             e.preventDefault();
-            const username = document.getElementById('username').value;
+            const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
             
             if (username === 'transportation' && password === '606486') {
-                currentUser = { id: 1, name: 'منسق النقل' };
+                currentUser = { id: 1, name: 'منسق النقل', role: 'admin' };
                 showApp();
                 showToast('✅ تم تسجيل الدخول بنجاح!', 'success');
             } else {
                 showToast('❌ بيانات الدخول غير صحيحة!', 'error');
+                document.getElementById('password').value = '';
             }
         }
         
@@ -1705,6 +2216,14 @@
             document.getElementById('loginPage').style.display = 'none';
             document.getElementById('appContainer').style.display = 'flex';
             document.getElementById('userName').textContent = currentUser.name;
+            
+            loadLocalData();
+            
+            if (db && isOnline) {
+                loadFirebaseData();
+            }
+            
+            showPage('dashboard');
         }
         
         function logout() {
@@ -1733,8 +2252,15 @@
                 loadStudents();
             } else if (pageId === 'warnings') {
                 loadWarnings();
-                setTodayDate();
+            } else if (pageId === 'dashboard') {
+                loadDashboardStats();
             }
+        }
+
+        function goToWarnings(studentId) {
+            showPage('warnings');
+            document.getElementById('warningStudent').value = studentId;
+            document.getElementById('warningForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         
         // ========== إدارة الطلاب ==========
@@ -1760,18 +2286,21 @@
             
             const newStudent = {
                 id: id,
-                name: document.getElementById('studentName').value,
+                name: document.getElementById('studentName').value.trim(),
                 grade: document.getElementById('studentGrade').value,
                 section: document.getElementById('studentSection').value,
-                zone: document.getElementById('studentZone').value,
-                phone: '0' + document.getElementById('parentPhone').value
+                zone: document.getElementById('studentZone').value.trim(),
+                phone: '0' + document.getElementById('parentPhone').value.trim(),
+                createdAt: new Date().toISOString()
             };
             
             students.push(newStudent);
+            saveLocalData();
             
-            if (db) {
+            if (db && isOnline) {
                 db.ref('students/' + id).set(newStudent).catch(error => {
-                    console.error('❌ خطأ في حفظ الطالب:', error);
+                    console.error('❌ خطأ في حفظ الطالب في Firebase:', error);
+                    showFirebaseError(error);
                 });
             }
             
@@ -1884,7 +2413,7 @@
 
                     importData = [];
                     let validCount = 0, warningCount = 0, errorCount = 0;
-                    let previewHTML = '<table class="preview-table"><thead><tr><th>الحالة</th><th>التفاصيل</th><th>رقم الاسيس</th><th>الاسم</th><th>الصف</th><th>الشعبة</th></tr></thead><tbody>';
+                    let previewHTML = '<table class="preview-table"><thead><tr><th>الحالة</th><th>التفاصيل</th><th>رقم الاسيس</th><th>الاسم</th><th>الصف</th></tr></thead><tbody>';
 
                     for (let i = 1; i < Math.min(rows.length, 101); i++) {
                         const row = rows[i];
@@ -1902,21 +2431,18 @@
                         const validation = validateStudent(student);
 
                         let statusIcon = '✅';
-                        let statusClass = 'success';
 
                         if (validation.errors.length > 0) {
                             statusIcon = '❌';
-                            statusClass = 'error';
                             errorCount++;
-                            previewHTML += `<tr style="background: #fef2f2;"><td>${statusIcon}</td><td style="color: var(--danger); font-size: 0.85rem;">${validation.errors.join(', ')}</td><td>${student.id || 'N/A'}</td><td>${student.name || 'N/A'}</td><td>${student.grade || 'N/A'}</td><td>${student.section || 'N/A'}</td></tr>`;
+                            previewHTML += `<tr style="background: #fef2f2;"><td>${statusIcon}</td><td style="color: var(--danger); font-size: 0.85rem;">${validation.errors.join(', ')}</td><td>${student.id || 'N/A'}</td><td>${student.name || 'N/A'}</td><td>${student.grade || 'N/A'}</td></tr>`;
                         } else if (validation.warnings.length > 0) {
                             statusIcon = '⚠️';
-                            statusClass = 'warning';
                             warningCount++;
-                            previewHTML += `<tr style="background: #fffbeb;"><td>${statusIcon}</td><td style="color: var(--warning); font-size: 0.85rem;">${validation.warnings.join(', ')}</td><td>${student.id}</td><td>${student.name}</td><td>${student.grade}</td><td>${student.section}</td></tr>`;
+                            previewHTML += `<tr style="background: #fffbeb;"><td>${statusIcon}</td><td style="color: var(--warning); font-size: 0.85rem;">${validation.warnings.join(', ')}</td><td>${student.id}</td><td>${student.name}</td><td>${student.grade}</td></tr>`;
                         } else {
                             validCount++;
-                            previewHTML += `<tr style="background: #ecfdf5;"><td>${statusIcon}</td><td style="color: var(--secondary); font-size: 0.85rem;">صحيح</td><td>${student.id}</td><td>${student.name}</td><td>${student.grade}</td><td>${student.section}</td></tr>`;
+                            previewHTML += `<tr style="background: #ecfdf5;"><td>${statusIcon}</td><td style="color: var(--secondary); font-size: 0.85rem;">صحيح ✓</td><td>${student.id}</td><td>${student.name}</td><td>${student.grade}</td></tr>`;
                         }
 
                         if (validation.isValid) {
@@ -1934,20 +2460,18 @@
                     document.getElementById('importBtn').disabled = importData.length === 0;
 
                     if (importData.length > 0) {
-                        showToast(`✅ تم التحقق من البيانات: ${importData.length} طالب جاهز للاستيراد`, 'success');
+                        showToast(`✅ تم التحقق: ${importData.length} طالب جاهز للاستيراق`, 'success');
                     } else if (errorCount > 0) {
-                        showToast(`⚠️ لا توجد بيانات صحيحة للاستيراد! (${errorCount} أخطاء)`, 'warning');
-                    } else {
-                        showToast('❌ فشل قراءة الملف. تأكد من صيغة الملف!', 'error');
+                        showToast(`⚠️ لا توجد بيانات صحيحة للاستيراق!`, 'warning');
                     }
 
                 } catch (error) {
                     console.error('خطأ في قراءة الملف:', error);
-                    showToast('❌ خطأ في قراءة الملف. تأكد من صيغة الملف الصحيحة!', 'error');
+                    showToast('❌ خطأ في قراءة الملف!', 'error');
                 }
             };
 
-            reader.onerror = function() {
+            reader.onerror = () => {
                 showToast('❌ خطأ في قراءة الملف!', 'error');
             };
 
@@ -1958,7 +2482,7 @@
             e.preventDefault();
 
             if (importData.length === 0) {
-                showToast('❌ لا توجد بيانات صحيحة للاستيراد!', 'error');
+                showToast('❌ لا توجد بيانات صحيحة للاستيراق!', 'error');
                 return;
             }
 
@@ -1966,32 +2490,37 @@
             const btn = document.getElementById('importBtn');
             const btnText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<div class="loading-spinner"></div> جاري الاستيراد...';
+            btn.innerHTML = '<div class="loading-spinner"></div> جاري الاستيراق...';
 
             let importedCount = 0;
             const failedIds = [];
 
-            importData.forEach(student => {
-                students.push(student);
+            importData.forEach((student, index) => {
+                // تجنب التكرار
+                if (!students.some(s => s.id === student.id)) {
+                    student.createdAt = new Date().toISOString();
+                    students.push(student);
 
-                if (db) {
-                    db.ref('students/' + student.id).set(student).catch(error => {
-                        console.error('خطأ في حفظ الطالب:', error);
-                        failedIds.push(student.id);
-                    });
+                    if (db && isOnline) {
+                        db.ref('students/' + student.id).set(student).catch(error => {
+                            console.error('خطأ في حفظ الطالب:', error);
+                            failedIds.push(student.id);
+                        });
+                    }
+
+                    importedCount++;
                 }
-
-                importedCount++;
             });
 
-            // محاكاة تأخير لإكمال العملية
+            saveLocalData();
+
             setTimeout(() => {
                 loadStudents();
                 closeImportModal();
 
-                let message = `✅ تم استيراد ${importedCount} طالب بنجاح!`;
+                let message = `✅ تم استيراق ${importedCount} طالب بنجاح!`;
                 if (failedIds.length > 0) {
-                    message += ` (تحذير: ${failedIds.length} طالب قد لم يتم حفظهم بنجاح)`;
+                    message += ` (تحذير: ${failedIds.length} لم يتم حفظهم في قاعدة البيانات)`;
                 }
                 showToast(message, 'success');
 
@@ -2019,14 +2548,6 @@
                         'الشعبة': '2',
                         'المنطقة': 'المنارة',
                         'رقم الوالد': '0561234567'
-                    },
-                    {
-                        'رقم الاسيس': '12347',
-                        'الاسم': 'علي محمد عبدالله',
-                        'الصف': 'Grade 6',
-                        'الشعبة': '3',
-                        'المنطقة': 'الكرامة',
-                        'رقم الوالد': '0551234567'
                     }
                 ];
 
@@ -2042,20 +2563,6 @@
                     { wch: 15 },
                     { wch: 15 }
                 ];
-
-                // تعيين خصائص العمودية للرأس
-                const headerStyle = {
-                    font: { bold: true, color: { rgb: "FFFFFF" } },
-                    fill: { fgColor: { rgb: "1e40af" } },
-                    alignment: { horizontal: "center", vertical: "center" }
-                };
-
-                Object.keys(worksheet).forEach(cell => {
-                    if (cell.startsWith('A1') || cell.startsWith('B1') || cell.startsWith('C1') || cell.startsWith('D1') || cell.startsWith('E1') || cell.startsWith('F1')) {
-                        if (!worksheet[cell].s) worksheet[cell].s = {};
-                        worksheet[cell].s = headerStyle;
-                    }
-                });
 
                 const fileName = 'نموذج_استيراد_الطلاب_' + new Date().toISOString().split('T')[0] + '.xlsx';
                 XLSX.writeFile(workbook, fileName);
@@ -2095,19 +2602,6 @@
                     { wch: 15 }
                 ];
 
-                // تنسيق الرأس
-                for (let i = 65; i <= 70; i++) { // A-F
-                    const cell = String.fromCharCode(i) + '1';
-                    if (worksheet[cell]) {
-                        if (!worksheet[cell].s) worksheet[cell].s = {};
-                        worksheet[cell].s = {
-                            font: { bold: true, color: { rgb: "FFFFFF" } },
-                            fill: { fgColor: { rgb: "1e40af" } },
-                            alignment: { horizontal: "center" }
-                        };
-                    }
-                }
-                
                 const fileName = 'قائمة_الطلاب_' + new Date().toISOString().split('T')[0] + '.xlsx';
                 XLSX.writeFile(workbook, fileName);
                 showToast('✅ تم تصدير البيانات بنجاح!', 'success');
@@ -2118,15 +2612,16 @@
         }
         
         function deleteStudent(id) {
-            if (confirm('هل تريد حذف هذا الطالب؟')) {
+            if (confirm('هل تريد حذف هذا الطالب بشكل نهائي؟')) {
                 students = students.filter(s => s.id !== id);
                 warnings = warnings.filter(w => w.studentId !== id);
+                saveLocalData();
                 
-                if (db) {
-                    db.ref('students/' + id).remove();
+                if (db && isOnline) {
+                    db.ref('students/' + id).remove().catch(e => console.error('خطأ:', e));
                     warnings.forEach(w => {
                         if (w.studentId === id) {
-                            db.ref('warnings/' + w.id).remove();
+                            db.ref('warnings/' + w.id).remove().catch(e => console.error('خطأ:', e));
                         }
                     });
                 }
@@ -2161,12 +2656,12 @@
             
             if (studentWarnings.length > 0) {
                 warningsHtml = '<table style="width: 100%; margin-top: 15px; border-collapse: collapse;">';
-                warningsHtml += '<tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;"><th style="padding: 10px; text-align: right;">النوع</th><th style="padding: 10px; text-align: right;">السبب</th><th style="padding: 10px; text-align: right;">التاريخ</th><th style="padding: 10px; text-align: right;">الحالة</th></tr>';
+                warningsHtml += '<tr style="background: var(--light); border-bottom: 2px solid var(--border);"><th style="padding: 10px; text-align: right;">النوع</th><th style="padding: 10px; text-align: right;">السبب</th><th style="padding: 10px; text-align: right;">التاريخ</th><th style="padding: 10px; text-align: right;">الحالة</th></tr>';
                 
                 studentWarnings.forEach(w => {
                     const typeText = { '1': 'الأول', '2': 'الثاني', '3': 'الثالث' }[w.type];
                     const statusText = w.status === 'active' ? 'نشط' : 'مؤرشف';
-                    warningsHtml += `<tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 10px;">الإنذار ${typeText}</td><td style="padding: 10px;">${w.violation}</td><td style="padding: 10px;">${formatDate(w.date)}</td><td style="padding: 10px;"><span class="status ${w.status === 'active' ? 'regular' : 'archived'}">${statusText}</span></td></tr>`;
+                    warningsHtml += `<tr style="border-bottom: 1px solid var(--border);"><td style="padding: 10px;">الإنذار ${typeText}</td><td style="padding: 10px;">${w.violation}</td><td style="padding: 10px;">${formatDate(w.date)}</td><td style="padding: 10px;"><span class="status ${w.status === 'active' ? 'regular' : 'archived'}">${statusText}</span></td></tr>`;
                 });
                 
                 warningsHtml += '</table>';
@@ -2200,7 +2695,7 @@
                     </div>
                 </div>
                 
-                <div style="border-top: 2px solid #e2e8f0; padding-top: 20px;">
+                <div style="border-top: 2px solid var(--border); padding-top: 20px;">
                     <h4 style="color: var(--primary); font-weight: 700; margin-bottom: 15px;">📋 سجل الإنذارات</h4>
                     ${warningsHtml}
                 </div>
@@ -2222,7 +2717,7 @@
             const studentId = document.getElementById('warningStudent').value;
             const warningType = document.getElementById('warningType').value;
             const violationType = document.getElementById('violationType').value;
-            const warningContent = document.getElementById('warningContent').value;
+            const warningContent = document.getElementById('warningContent').value.trim();
             const sendWhatsApp = document.getElementById('sendWhatsApp').checked;
             
             if (!studentId || !warningType || !violationType || !warningContent) {
@@ -2231,7 +2726,10 @@
             }
             
             const student = students.find(s => s.id === studentId);
-            if (!student) return;
+            if (!student) {
+                showToast('❌ الطالب غير موجود!', 'error');
+                return;
+            }
             
             const previousWarnings = warnings.filter(w => w.studentId === studentId && w.status === 'active');
             
@@ -2244,7 +2742,7 @@
             }
             
             const newWarning = {
-                id: 'W' + Date.now(),
+                id: 'W' + Date.now() + Math.random().toString(36).substr(2, 9),
                 studentId: studentId,
                 studentName: student.name,
                 type: warningType,
@@ -2252,14 +2750,17 @@
                 content: warningContent,
                 date: new Date().toISOString().split('T')[0],
                 status: 'active',
-                phone: student.phone
+                phone: student.phone,
+                createdAt: new Date().toISOString()
             };
             
             warnings.push(newWarning);
+            saveLocalData();
             
-            if (db) {
+            if (db && isOnline) {
                 db.ref('warnings/' + newWarning.id).set(newWarning).catch(error => {
                     console.error('❌ خطأ في حفظ الإنذار:', error);
+                    showFirebaseError(error);
                 });
             }
             
@@ -2331,9 +2832,9 @@
                     </div>
                 </div>
                 
-                <div style="border-top: 2px solid #e2e8f0; padding-top: 20px;">
+                <div style="border-top: 2px solid var(--border); padding-top: 20px;">
                     <h4 style="color: var(--primary); font-weight: 700; margin-bottom: 15px;">📝 نص الإنذار</h4>
-                    <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-right: 4px solid var(--primary); line-height: 1.8;">
+                    <div style="background: var(--light); padding: 16px; border-radius: 8px; border-right: 4px solid var(--primary); line-height: 1.8;">
                         ${warning.content}
                     </div>
                 </div>
@@ -2348,9 +2849,11 @@
             const warning = warnings.find(w => w.id === id);
             if (warning) {
                 warning.status = 'archived';
+                warning.archivedAt = new Date().toISOString();
+                saveLocalData();
                 
-                if (db) {
-                    db.ref('warnings/' + id).update({ status: 'archived' });
+                if (db && isOnline) {
+                    db.ref('warnings/' + id).update({ status: 'archived', archivedAt: warning.archivedAt });
                 }
                 
                 loadWarnings();
@@ -2360,11 +2863,12 @@
         }
         
         function deleteWarning(id) {
-            if (confirm('هل تريد حذف هذا الإنذار؟')) {
+            if (confirm('هل تريد حذف هذا الإنذار بشكل نهائي؟')) {
                 warnings = warnings.filter(w => w.id !== id);
+                saveLocalData();
                 
-                if (db) {
-                    db.ref('warnings/' + id).remove();
+                if (db && isOnline) {
+                    db.ref('warnings/' + id).remove().catch(e => console.error('خطأ:', e));
                 }
                 
                 loadWarnings();
@@ -2378,6 +2882,7 @@
         function updateReportForm() {
             const reportType = document.getElementById('reportType').value;
             document.getElementById('studentSelectGroup').style.display = reportType === 'student' ? 'block' : 'none';
+            document.getElementById('classSelectGroup').style.display = reportType === 'class' ? 'block' : 'none';
         }
         
         function generateReport(e) {
@@ -2392,7 +2897,6 @@
                 return;
             }
             
-            filteredWarningsForReport = warnings.filter(w => w.date >= startDate && w.date <= endDate);
             let reportHTML = generateReportHTML(reportType, startDate, endDate);
             
             document.getElementById('reportContent').innerHTML = reportHTML;
@@ -2400,6 +2904,7 @@
             document.getElementById('printBtn').style.display = 'inline-flex';
             document.getElementById('exportReportBtn').style.display = 'inline-flex';
             
+            document.getElementById('reportContainer').scrollIntoView({ behavior: 'smooth' });
             showToast('✅ تم توليد التقرير بنجاح!', 'success');
         }
         
@@ -2425,7 +2930,7 @@
                     const studentWarnings = filteredWarnings.filter(w => w.studentId === studentId);
                     
                     html += `
-                        <div style="margin-bottom: 25px; background: #f8fafc; padding: 20px; border-radius: 8px;">
+                        <div style="margin-bottom: 25px; background: var(--light); padding: 20px; border-radius: 8px;">
                             <h3 style="color: var(--primary); margin-bottom: 15px;">بيانات الطالب/ة</h3>
                             <p><strong>الاسم:</strong> ${student.name}</p>
                             <p><strong>رقم الاسيس:</strong> ${student.id}</p>
@@ -2438,12 +2943,11 @@
                     if (studentWarnings.length > 0) {
                         html += `<h3 style="color: var(--primary); margin-bottom: 15px;">الإنذارات (${studentWarnings.length})</h3>`;
                         html += '<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">';
-                        html += '<tr style="background: var(--primary); color: white;"><th style="padding: 12px; text-align: right;">النوع</th><th style="padding: 12px; text-align: right;">السبب</th><th style="padding: 12px; text-align: right;">التاريخ</th><th style="padding: 12px; text-align: right;">الحالة</th></tr>';
+                        html += '<tr style="background: var(--primary); color: white;"><th style="padding: 12px; text-align: right;">النوع</th><th style="padding: 12px; text-align: right;">السبب</th><th style="padding: 12px; text-align: right;">التاريخ</th></tr>';
                         
                         studentWarnings.forEach((w, idx) => {
                             const typeText = { '1': 'الأول', '2': 'الثاني', '3': 'الثالث' }[w.type];
-                            const statusText = w.status === 'active' ? 'نشط' : 'مؤرشف';
-                            html += `<tr style="background: ${idx % 2 === 0 ? 'white' : '#f8fafc'}; border-bottom: 1px solid #e2e8f0;"><td style="padding: 12px;">الإنذار ${typeText}</td><td style="padding: 12px;">${w.violation}</td><td style="padding: 12px;">${formatDate(w.date)}</td><td style="padding: 12px;">${statusText}</td></tr>`;
+                            html += `<tr style="background: ${idx % 2 === 0 ? 'white' : 'var(--light)'}; border-bottom: 1px solid var(--border);"><td style="padding: 12px;">الإنذار ${typeText}</td><td style="padding: 12px;">${w.violation}</td><td style="padding: 12px;">${formatDate(w.date)}</td></tr>`;
                         });
                         
                         html += '</table>';
@@ -2485,10 +2989,34 @@
                 
                 filteredWarnings.forEach((w, idx) => {
                     const typeText = { '1': 'الأول', '2': 'الثاني', '3': 'الثالث' }[w.type];
-                    html += `<tr style="background: ${idx % 2 === 0 ? 'white' : '#f8fafc'}; border-bottom: 1px solid #e2e8f0;"><td style="padding: 12px;">${w.studentName}</td><td style="padding: 12px;">الإنذار ${typeText}</td><td style="padding: 12px;">${w.violation}</td><td style="padding: 12px;">${formatDate(w.date)}</td></tr>`;
+                    html += `<tr style="background: ${idx % 2 === 0 ? 'white' : 'var(--light)'}; border-bottom: 1px solid var(--border);"><td style="padding: 12px;">${w.studentName}</td><td style="padding: 12px;">الإنذار ${typeText}</td><td style="padding: 12px;">${w.violation}</td><td style="padding: 12px;">${formatDate(w.date)}</td></tr>`;
                 });
                 
                 html += '</table>';
+            } else if (type === 'class') {
+                const classId = document.getElementById('reportClass').value;
+                const classWarnings = filteredWarnings.filter(w => {
+                    const student = students.find(s => s.id === w.studentId);
+                    return student && student.grade === classId;
+                });
+                
+                const classStudents = students.filter(s => s.grade === classId);
+                
+                html += `<h3 style="color: var(--primary); margin-bottom: 20px;">تقرير الصف: ${classId}</h3>`;
+                html += `<p><strong>عدد طلاب الصف:</strong> ${classStudents.length}</p>`;
+                html += `<p><strong>عدد الإنذارات:</strong> ${classWarnings.length}</p>`;
+                
+                if (classWarnings.length > 0) {
+                    html += '<table style="width: 100%; border-collapse: collapse; margin-top: 20px;">';
+                    html += '<tr style="background: var(--primary); color: white;"><th style="padding: 12px; text-align: right;">الطالب</th><th style="padding: 12px; text-align: right;">النوع</th><th style="padding: 12px; text-align: right;">السبب</th><th style="padding: 12px; text-align: right;">التاريخ</th></tr>';
+                    
+                    classWarnings.forEach((w, idx) => {
+                        const typeText = { '1': 'الأول', '2': 'الثاني', '3': 'الثالث' }[w.type];
+                        html += `<tr style="background: ${idx % 2 === 0 ? 'white' : 'var(--light)'}; border-bottom: 1px solid var(--border);"><td style="padding: 12px;">${w.studentName}</td><td style="padding: 12px;">الإنذار ${typeText}</td><td style="padding: 12px;">${w.violation}</td><td style="padding: 12px;">${formatDate(w.date)}</td></tr>`;
+                    });
+                    
+                    html += '</table>';
+                }
             } else if (type === 'summary') {
                 const totalStudents = new Set(filteredWarnings.map(w => w.studentId)).size;
                 const firstWarnings = filteredWarnings.filter(w => w.type === '1').length;
@@ -2509,14 +3037,14 @@
                     
                     <h3 style="color: var(--primary); margin-bottom: 15px;">توزيع الإنذارات</h3>
                     <table style="width: 100%; border-collapse: collapse;">
-                        <tr style="background: #f8fafc;"><td style="padding: 12px; border-bottom: 2px solid #e2e8f0;"><strong>الإنذارات الأولى:</strong></td><td style="padding: 12px; border-bottom: 2px solid #e2e8f0; text-align: left;">${firstWarnings}</td></tr>
-                        <tr style="background: white;"><td style="padding: 12px; border-bottom: 2px solid #e2e8f0;"><strong>الإنذارات الثانية:</strong></td><td style="padding: 12px; border-bottom: 2px solid #e2e8f0; text-align: left;">${secondWarnings}</td></tr>
-                        <tr style="background: #f8fafc;"><td style="padding: 12px;"><strong>الإنذارات الثالثة:</strong></td><td style="padding: 12px; text-align: left;">${thirdWarnings}</td></tr>
+                        <tr style="background: var(--light);"><td style="padding: 12px; border-bottom: 2px solid var(--border);"><strong>الإنذارات الأولى:</strong></td><td style="padding: 12px; border-bottom: 2px solid var(--border); text-align: left;">${firstWarnings}</td></tr>
+                        <tr style="background: white;"><td style="padding: 12px; border-bottom: 2px solid var(--border);"><strong>الإنذارات الثانية:</strong></td><td style="padding: 12px; border-bottom: 2px solid var(--border); text-align: left;">${secondWarnings}</td></tr>
+                        <tr style="background: var(--light);"><td style="padding: 12px;"><strong>الإنذارات الثالثة:</strong></td><td style="padding: 12px; text-align: left;">${thirdWarnings}</td></tr>
                     </table>
                 `;
             }
             
-            html += '<div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e2e8f0; text-align: center; color: var(--gray); font-size: 0.9rem;">هذا التقرير تم توليده بواسطة نظام إدارة سلوك الطالب في الباص</div>';
+            html += '<div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid var(--border); text-align: center; color: var(--gray); font-size: 0.9rem;">نظام إدارة سلوك الطالب في الباص - جميع الحقوق محفوظة</div>';
             
             return html;
         }
@@ -2527,7 +3055,6 @@
         
         function exportReportToExcel() {
             try {
-                const reportType = document.getElementById('reportType').value;
                 const startDate = document.getElementById('reportStartDate').value;
                 const endDate = document.getElementById('reportEndDate').value;
                 const filteredWarnings = warnings.filter(w => w.date >= startDate && w.date <= endDate && w.status === 'active');
@@ -2542,8 +3069,7 @@
                     'رقم الاسيس': w.studentId,
                     'نوع الإنذار': { '1': 'الأول', '2': 'الثاني', '3': 'الثالث' }[w.type],
                     'السبب': w.violation,
-                    'التاريخ': formatDate(w.date),
-                    'الحالة': w.status === 'active' ? 'نشط' : 'مؤرشف'
+                    'التاريخ': formatDate(w.date)
                 }));
                 
                 const worksheet = XLSX.utils.json_to_sheet(data);
@@ -2555,22 +3081,9 @@
                     { wch: 15 },
                     { wch: 15 },
                     { wch: 20 },
-                    { wch: 15 },
-                    { wch: 10 }
+                    { wch: 15 }
                 ];
 
-                // تنسيق الرأس
-                for (let i = 65; i <= 70; i++) { // A-F
-                    const cell = String.fromCharCode(i) + '1';
-                    if (worksheet[cell]) {
-                        if (!worksheet[cell].s) worksheet[cell].s = {};
-                        worksheet[cell].s = {
-                            font: { bold: true, color: { rgb: "FFFFFF" } },
-                            fill: { fgColor: { rgb: "1e40af" } }
-                        };
-                    }
-                }
-                
                 const fileName = 'تقرير_الإنذارات_' + startDate + '.xlsx';
                 XLSX.writeFile(workbook, fileName);
                 showToast('✅ تم تصدير التقرير بنجاح!', 'success');
@@ -2579,23 +3092,78 @@
                 showToast('❌ حدث خطأ في تصدير التقرير!', 'error');
             }
         }
+
+        // ========== البحث المتقدم ==========
+        function globalSearch() {
+            const searchTerm = document.getElementById('globalSearch').value.toLowerCase().trim();
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (!searchTerm) {
+                resultsDiv.classList.remove('active');
+                return;
+            }
+            
+            const studentResults = students.filter(s => 
+                s.name.toLowerCase().includes(searchTerm) || 
+                s.id.includes(searchTerm)
+            ).slice(0, 5);
+            
+            const warningResults = warnings.filter(w => 
+                w.studentName.toLowerCase().includes(searchTerm) || 
+                w.studentId.includes(searchTerm)
+            ).slice(0, 5);
+            
+            let html = '';
+            
+            if (studentResults.length > 0) {
+                html += '<div style="padding: 12px 16px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border);">الطلاب</div>';
+                studentResults.forEach(s => {
+                    html += `<div class="search-result-item" onclick="viewStudentDetails('${s.id}')">${s.name} <strong>(${s.id})</strong></div>`;
+                });
+            }
+            
+            if (warningResults.length > 0) {
+                html += '<div style="padding: 12px 16px; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border);">الإنذارات</div>';
+                warningResults.forEach(w => {
+                    html += `<div class="search-result-item" onclick="viewWarningDetails('${w.id}')">${w.studentName} - ${w.violation} <strong>(${formatDate(w.date)})</strong></div>`;
+                });
+            }
+            
+            if (html) {
+                resultsDiv.innerHTML = html;
+                resultsDiv.classList.add('active');
+            } else {
+                resultsDiv.classList.remove('active');
+            }
+        }
         
         // ========== دوال مساعدة ==========
         function formatDate(dateString) {
-            const date = new Date(dateString + 'T00:00:00');
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            return date.toLocaleDateString('ar-SA', options);
-        }
-        
-        function globalSearch() {
-            const searchTerm = document.getElementById('globalSearch').value.toLowerCase();
-            console.log('بحث عام:', searchTerm);
+            try {
+                const date = new Date(dateString + 'T00:00:00');
+                return date.toLocaleDateString('ar-SA', { 
+                    weekday: 'short',
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+            } catch {
+                return dateString;
+            }
         }
         
         function showToast(message, type = 'info') {
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
-            toast.innerHTML = `<div>${message}</div>`;
+            
+            const icons = {
+                success: '✅',
+                error: '❌',
+                info: 'ℹ️',
+                warning: '⚠️'
+            };
+            
+            toast.innerHTML = `<div style="display: flex; align-items: center; gap: 10px;"><span>${icons[type] || type}</span><div>${message}</div></div>`;
             document.body.appendChild(toast);
             
             setTimeout(() => {
@@ -2603,8 +3171,15 @@
                 setTimeout(() => {
                     toast.remove();
                 }, 300);
-            }, 3000);
+            }, 4000);
         }
+
+        // إغلاق البحث عند النقر خارجه
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-box')) {
+                document.getElementById('searchResults').classList.remove('active');
+            }
+        });
     </script>
 </body>
 </html>
