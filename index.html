@@ -815,6 +815,21 @@
             background: linear-gradient(135deg, #dbeafe, #dcfce7);
             border-color: var(--secondary);
         }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
         
         @media (max-width: 1024px) {
             .sidebar {
@@ -1429,6 +1444,7 @@
         let warnings = [];
         let filteredWarningsForReport = [];
         let importData = [];
+        let isImporting = false;
         
         // ========== تهيئة Firebase ==========
         const firebaseConfig = {
@@ -1776,6 +1792,7 @@
         function closeImportModal() {
             document.getElementById('importModal').classList.remove('active');
             importData = [];
+            document.getElementById('excelFile').value = '';
         }
 
         function normalizeValue(value, type) {
@@ -1846,8 +1863,19 @@
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+                        showToast('❌ الملف لا يحتوي على أوراق بيانات!', 'error');
+                        return;
+                    }
+
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    if (!sheet) {
+                        showToast('❌ خطأ في قراءة ورقة البيانات!', 'error');
+                        return;
+                    }
+
+                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
                     if (rows.length < 2) {
                         showToast('❌ الملف فارغ أو لا يحتوي على بيانات!', 'error');
@@ -1858,7 +1886,7 @@
                     let validCount = 0, warningCount = 0, errorCount = 0;
                     let previewHTML = '<table class="preview-table"><thead><tr><th>الحالة</th><th>التفاصيل</th><th>رقم الاسيس</th><th>الاسم</th><th>الصف</th><th>الشعبة</th></tr></thead><tbody>';
 
-                    for (let i = 1; i < Math.min(rows.length, 51); i++) {
+                    for (let i = 1; i < Math.min(rows.length, 101); i++) {
                         const row = rows[i];
                         if (!row[0]) continue;
 
@@ -1880,15 +1908,15 @@
                             statusIcon = '❌';
                             statusClass = 'error';
                             errorCount++;
-                            previewHTML += `<tr style="background: #fef2f2;"><td>${statusIcon}</td><td style="color: var(--danger);">${validation.errors.join(', ')}</td><td>${student.id}</td><td>${student.name}</td><td>${student.grade}</td><td>${student.section}</td></tr>`;
+                            previewHTML += `<tr style="background: #fef2f2;"><td>${statusIcon}</td><td style="color: var(--danger); font-size: 0.85rem;">${validation.errors.join(', ')}</td><td>${student.id || 'N/A'}</td><td>${student.name || 'N/A'}</td><td>${student.grade || 'N/A'}</td><td>${student.section || 'N/A'}</td></tr>`;
                         } else if (validation.warnings.length > 0) {
                             statusIcon = '⚠️';
                             statusClass = 'warning';
                             warningCount++;
-                            previewHTML += `<tr style="background: #fffbeb;"><td>${statusIcon}</td><td style="color: var(--warning);">${validation.warnings.join(', ')}</td><td>${student.id}</td><td>${student.name}</td><td>${student.grade}</td><td>${student.section}</td></tr>`;
+                            previewHTML += `<tr style="background: #fffbeb;"><td>${statusIcon}</td><td style="color: var(--warning); font-size: 0.85rem;">${validation.warnings.join(', ')}</td><td>${student.id}</td><td>${student.name}</td><td>${student.grade}</td><td>${student.section}</td></tr>`;
                         } else {
                             validCount++;
-                            previewHTML += `<tr style="background: #ecfdf5;"><td>${statusIcon}</td><td style="color: var(--secondary);">صحيح</td><td>${student.id}</td><td>${student.name}</td><td>${student.grade}</td><td>${student.section}</td></tr>`;
+                            previewHTML += `<tr style="background: #ecfdf5;"><td>${statusIcon}</td><td style="color: var(--secondary); font-size: 0.85rem;">صحيح</td><td>${student.id}</td><td>${student.name}</td><td>${student.grade}</td><td>${student.section}</td></tr>`;
                         }
 
                         if (validation.isValid) {
@@ -1907,14 +1935,20 @@
 
                     if (importData.length > 0) {
                         showToast(`✅ تم التحقق من البيانات: ${importData.length} طالب جاهز للاستيراد`, 'success');
+                    } else if (errorCount > 0) {
+                        showToast(`⚠️ لا توجد بيانات صحيحة للاستيراد! (${errorCount} أخطاء)`, 'warning');
                     } else {
-                        showToast('❌ لا توجد بيانات صحيحة للاستيراد!', 'error');
+                        showToast('❌ فشل قراءة الملف. تأكد من صيغة الملف!', 'error');
                     }
 
                 } catch (error) {
                     console.error('خطأ في قراءة الملف:', error);
-                    showToast('❌ خطأ في قراءة الملف. تأكد من صيغة الملف!', 'error');
+                    showToast('❌ خطأ في قراءة الملف. تأكد من صيغة الملف الصحيحة!', 'error');
                 }
+            };
+
+            reader.onerror = function() {
+                showToast('❌ خطأ في قراءة الملف!', 'error');
             };
 
             reader.readAsArrayBuffer(file);
@@ -1927,6 +1961,12 @@
                 showToast('❌ لا توجد بيانات صحيحة للاستيراد!', 'error');
                 return;
             }
+
+            isImporting = true;
+            const btn = document.getElementById('importBtn');
+            const btnText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading-spinner"></div> جاري الاستيراد...';
 
             let importedCount = 0;
             const failedIds = [];
@@ -1944,14 +1984,21 @@
                 importedCount++;
             });
 
-            loadStudents();
-            closeImportModal();
+            // محاكاة تأخير لإكمال العملية
+            setTimeout(() => {
+                loadStudents();
+                closeImportModal();
 
-            let message = `✅ تم استيراد ${importedCount} طالب بنجاح!`;
-            if (failedIds.length > 0) {
-                message += ` (فشل ${failedIds.length} أثناء الحفظ)`;
-            }
-            showToast(message, 'success');
+                let message = `✅ تم استيراد ${importedCount} طالب بنجاح!`;
+                if (failedIds.length > 0) {
+                    message += ` (تحذير: ${failedIds.length} طالب قد لم يتم حفظهم بنجاح)`;
+                }
+                showToast(message, 'success');
+
+                isImporting = false;
+                btn.disabled = false;
+                btn.innerHTML = btnText;
+            }, 1500);
         }
 
         function downloadTemplate() {
@@ -1996,7 +2043,21 @@
                     { wch: 15 }
                 ];
 
-                const fileName = 'نموذج_استيراد_الطلاب.xlsx';
+                // تعيين خصائص العمودية للرأس
+                const headerStyle = {
+                    font: { bold: true, color: { rgb: "FFFFFF" } },
+                    fill: { fgColor: { rgb: "1e40af" } },
+                    alignment: { horizontal: "center", vertical: "center" }
+                };
+
+                Object.keys(worksheet).forEach(cell => {
+                    if (cell.startsWith('A1') || cell.startsWith('B1') || cell.startsWith('C1') || cell.startsWith('D1') || cell.startsWith('E1') || cell.startsWith('F1')) {
+                        if (!worksheet[cell].s) worksheet[cell].s = {};
+                        worksheet[cell].s = headerStyle;
+                    }
+                });
+
+                const fileName = 'نموذج_استيراد_الطلاب_' + new Date().toISOString().split('T')[0] + '.xlsx';
                 XLSX.writeFile(workbook, fileName);
                 showToast('✅ تم تحميل النموذج بنجاح!', 'success');
             } catch (error) {
@@ -2007,13 +2068,18 @@
         
         function exportStudentsToExcel() {
             try {
+                if (students.length === 0) {
+                    showToast('⚠️ لا توجد طلاب للتصدير!', 'warning');
+                    return;
+                }
+
                 const data = students.map(s => ({
                     'رقم الاسيس': s.id,
                     'الاسم': s.name,
                     'الصف': s.grade,
                     'الشعبة': s.section,
                     'المنطقة': s.zone,
-                    'رقم الوالد': s.phone
+                    'رقم الوالد': '0' + s.phone.substring(1)
                 }));
                 
                 const worksheet = XLSX.utils.json_to_sheet(data);
@@ -2028,6 +2094,19 @@
                     { wch: 15 },
                     { wch: 15 }
                 ];
+
+                // تنسيق الرأس
+                for (let i = 65; i <= 70; i++) { // A-F
+                    const cell = String.fromCharCode(i) + '1';
+                    if (worksheet[cell]) {
+                        if (!worksheet[cell].s) worksheet[cell].s = {};
+                        worksheet[cell].s = {
+                            font: { bold: true, color: { rgb: "FFFFFF" } },
+                            fill: { fgColor: { rgb: "1e40af" } },
+                            alignment: { horizontal: "center" }
+                        };
+                    }
+                }
                 
                 const fileName = 'قائمة_الطلاب_' + new Date().toISOString().split('T')[0] + '.xlsx';
                 XLSX.writeFile(workbook, fileName);
@@ -2453,6 +2532,11 @@
                 const endDate = document.getElementById('reportEndDate').value;
                 const filteredWarnings = warnings.filter(w => w.date >= startDate && w.date <= endDate && w.status === 'active');
                 
+                if (filteredWarnings.length === 0) {
+                    showToast('⚠️ لا توجد بيانات للتصدير!', 'warning');
+                    return;
+                }
+
                 const data = filteredWarnings.map(w => ({
                     'اسم الطالب': w.studentName,
                     'رقم الاسيس': w.studentId,
@@ -2474,6 +2558,18 @@
                     { wch: 15 },
                     { wch: 10 }
                 ];
+
+                // تنسيق الرأس
+                for (let i = 65; i <= 70; i++) { // A-F
+                    const cell = String.fromCharCode(i) + '1';
+                    if (worksheet[cell]) {
+                        if (!worksheet[cell].s) worksheet[cell].s = {};
+                        worksheet[cell].s = {
+                            font: { bold: true, color: { rgb: "FFFFFF" } },
+                            fill: { fgColor: { rgb: "1e40af" } }
+                        };
+                    }
+                }
                 
                 const fileName = 'تقرير_الإنذارات_' + startDate + '.xlsx';
                 XLSX.writeFile(workbook, fileName);
