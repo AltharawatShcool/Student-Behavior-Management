@@ -703,6 +703,118 @@
         .toast.success { border-left: 4px solid var(--secondary); }
         .toast.error { border-left: 4px solid var(--danger); }
         .toast.info { border-left: 4px solid var(--primary); }
+
+        .import-preview {
+            background: #f8fafc;
+            border: 2px dashed #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .preview-table th {
+            background: var(--primary);
+            color: white;
+            padding: 10px;
+            text-align: right;
+            border: none;
+        }
+
+        .preview-table td {
+            padding: 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .preview-table tr:hover {
+            background: white;
+        }
+
+        .import-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .import-stat {
+            text-align: center;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .import-stat.success {
+            border-left-color: var(--secondary);
+        }
+
+        .import-stat.error {
+            border-left-color: var(--danger);
+        }
+
+        .import-stat.warning {
+            border-left-color: var(--warning);
+        }
+
+        .import-stat strong {
+            display: block;
+            font-size: 1.8rem;
+            margin: 10px 0;
+            color: var(--primary);
+        }
+
+        .import-stat.success strong {
+            color: var(--secondary);
+        }
+
+        .import-stat.error strong {
+            color: var(--danger);
+        }
+
+        .import-stat.warning strong {
+            color: var(--warning);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 20px;
+            background: linear-gradient(135deg, #f0f9ff, #f0fdf4);
+            border: 2px dashed var(--primary);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-input-label:hover {
+            background: linear-gradient(135deg, #e0f2fe, #dcfce7);
+            border-color: var(--secondary);
+        }
+
+        .file-input-label.active {
+            background: linear-gradient(135deg, #dbeafe, #dcfce7);
+            border-color: var(--secondary);
+        }
         
         @media (max-width: 1024px) {
             .sidebar {
@@ -787,6 +899,10 @@
             
             .table-controls input, .table-controls select {
                 width: 100%;
+            }
+
+            .import-stats {
+                grid-template-columns: 1fr;
             }
         }
         
@@ -938,6 +1054,7 @@
                         <div class="title-actions">
                             <button class="btn btn-primary" onclick="showAddStudentModal()"><i class="fas fa-plus"></i> إضافة طالب</button>
                             <button class="btn btn-secondary" onclick="showImportModal()"><i class="fas fa-file-excel"></i> استيراد إكسل</button>
+                            <button class="btn btn-warning" onclick="downloadTemplate()"><i class="fas fa-download"></i> تحميل النموذج</button>
                             <button class="btn btn-warning" onclick="exportStudentsToExcel()"><i class="fas fa-download"></i> تصدير إكسل</button>
                         </div>
                     </div>
@@ -977,6 +1094,7 @@
                                         <th>رقم الاسيس</th>
                                         <th>الاسم</th>
                                         <th>الصف</th>
+                                        <th>الشعبة</th>
                                         <th>المنطقة</th>
                                         <th>رقم الوالد</th>
                                         <th>الإنذارات</th>
@@ -984,7 +1102,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="studentsTable">
-                                    <tr><td colspan="7" class="text-center text-muted">جاري التحميل...</td></tr>
+                                    <tr><td colspan="8" class="text-center text-muted">جاري التحميل...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1197,10 +1315,16 @@
                         <label>الشعبة *</label>
                         <select id="studentSection" required>
                             <option value="">-- اختر الشعبة --</option>
-                            <option value="أ">أ</option>
-                            <option value="ب">ب</option>
-                            <option value="ج">ج</option>
-                            <option value="د">د</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                            <option value="9">9</option>
+                            <option value="10">10</option>
                         </select>
                     </div>
                 </div>
@@ -1231,26 +1355,55 @@
     <div class="modal" id="importModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title"><i class="fas fa-file-excel"></i> استيراد ملف إكسل</h3>
+                <h3 class="modal-title"><i class="fas fa-file-excel"></i> استيراد ملف إكسل احترافي</h3>
                 <button type="button" class="close-modal" onclick="closeImportModal()">×</button>
             </div>
             <form id="importForm" onsubmit="importExcel(event)">
                 <div class="form-group">
                     <label>اختر ملف إكسل *</label>
-                    <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" required>
-                    <small style="color: var(--gray); margin-top: 8px; display: block;">الصيغ المدعومة: xlsx, xls, csv</small>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" onchange="previewImportFile(event)">
+                        <label class="file-input-label" id="fileInputLabel" for="excelFile">
+                            <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: var(--primary); margin-bottom: 10px; display: block;"></i>
+                            <div><strong>اضغط هنا لاختيار الملف أو اسحب الملف هنا</strong></div>
+                            <small style="color: var(--gray); margin-top: 8px; display: block;">الصيغ المدعومة: xlsx, xls, csv</small>
+                        </label>
+                    </div>
+                    <small style="color: var(--gray); margin-top: 8px; display: block;" id="fileNameDisplay"></small>
+                </div>
+
+                <div id="importPreviewSection" style="display: none;">
+                    <div class="import-stats">
+                        <div class="import-stat success">
+                            <div>✅ صحيح</div>
+                            <strong id="validCount">0</strong>
+                            <small>سجل</small>
+                        </div>
+                        <div class="import-stat warning">
+                            <div>⚠️ تحذيرات</div>
+                            <strong id="warningCount">0</strong>
+                            <small>سجل</small>
+                        </div>
+                        <div class="import-stat error">
+                            <div>❌ أخطاء</div>
+                            <strong id="errorCount">0</strong>
+                            <small>سجل</small>
+                        </div>
+                    </div>
+
+                    <div class="import-preview" id="importPreview"></div>
                 </div>
                 
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0; display: none;" id="templateInfo">
                     <p style="font-weight: 600; margin-bottom: 12px; color: var(--primary);">📋 صيغة الملف المطلوبة:</p>
                     <p style="font-size: 0.9rem; line-height: 1.6; color: var(--gray);">
-                        يجب أن يحتوي الملف على الأعمدة التالية بنفس الترتيب:<br>
+                        يجب أن يحتوي الملف على الأعمدة التالية:<br>
                         <strong>رقم الاسيس | الاسم | الصف | الشعبة | المنطقة | رقم الوالد</strong>
                     </p>
                 </div>
                 
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-secondary"><i class="fas fa-upload"></i> استيراد</button>
+                    <button type="submit" class="btn btn-secondary" id="importBtn" disabled><i class="fas fa-upload"></i> استيراد</button>
                     <button type="button" class="btn btn-outline" onclick="closeImportModal()"><i class="fas fa-times"></i> إلغاء</button>
                 </div>
             </form>
@@ -1275,6 +1428,7 @@
         let students = [];
         let warnings = [];
         let filteredWarningsForReport = [];
+        let importData = [];
         
         // ========== تهيئة Firebase ==========
         const firebaseConfig = {
@@ -1298,6 +1452,7 @@
         // ========== التهيئة ==========
         document.addEventListener('DOMContentLoaded', () => {
             setupEventListeners();
+            setupFileUpload();
             if (db) {
                 loadFirebaseData();
             }
@@ -1311,6 +1466,33 @@
                     showPage(link.dataset.page);
                 });
             });
+        }
+
+        function setupFileUpload() {
+            const fileInput = document.getElementById('excelFile');
+            const fileInputLabel = document.getElementById('fileInputLabel');
+
+            // Drag and drop
+            fileInputLabel.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileInputLabel.classList.add('active');
+            });
+
+            fileInputLabel.addEventListener('dragleave', () => {
+                fileInputLabel.classList.remove('active');
+            });
+
+            fileInputLabel.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileInputLabel.classList.remove('active');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    previewImportFile({ target: { files: files } });
+                }
+            });
+
+            fileInput.addEventListener('change', previewImportFile);
         }
         
         function setTodayDate() {
@@ -1419,7 +1601,8 @@
                 row.innerHTML = `
                     <td><strong>${student.id}</strong></td>
                     <td>${student.name}</td>
-                    <td>${student.grade} / ${student.section}</td>
+                    <td>${student.grade}</td>
+                    <td>${student.section}</td>
                     <td>${student.zone}</td>
                     <td dir="ltr">+971${student.phone.substring(1)}</td>
                     <td>${warningBadge}</td>
@@ -1583,82 +1766,243 @@
         
         function showImportModal() {
             document.getElementById('importForm').reset();
+            document.getElementById('importPreviewSection').style.display = 'none';
+            document.getElementById('fileNameDisplay').textContent = '';
+            document.getElementById('importBtn').disabled = true;
+            importData = [];
             document.getElementById('importModal').classList.add('active');
         }
         
         function closeImportModal() {
             document.getElementById('importModal').classList.remove('active');
+            importData = [];
         }
-        
-        function importExcel(e) {
-            e.preventDefault();
-            const file = document.getElementById('excelFile').files[0];
-            
-            if (!file) {
-                showToast('❌ يرجى اختيار ملف!', 'error');
-                return;
+
+        function normalizeValue(value, type) {
+            if (!value) return null;
+            value = value.toString().trim();
+
+            switch(type) {
+                case 'id':
+                    return value.replace(/\D/g, '');
+                case 'name':
+                    return value.replace(/[0-9]/g, '').trim();
+                case 'section':
+                    const sectionNum = value.replace(/\D/g, '');
+                    return sectionNum ? sectionNum : value;
+                case 'phone':
+                    let phone = value.replace(/\D/g, '');
+                    if (phone.startsWith('00971')) {
+                        phone = phone.replace(/^00971/, '0');
+                    } else if (phone.startsWith('971')) {
+                        phone = '0' + phone.replace(/^971/, '');
+                    } else if (!phone.startsWith('0') && phone.length === 9) {
+                        phone = '0' + phone;
+                    }
+                    return phone;
+                default:
+                    return value;
             }
-            
+        }
+
+        function validateStudent(row) {
+            const errors = [];
+            const warnings = [];
+
+            if (!row.id || !normalizeValue(row.id, 'id')) {
+                errors.push('رقم الاسيس فارغ أو غير صحيح');
+            }
+            if (!row.name || !normalizeValue(row.name, 'name')) {
+                errors.push('اسم الطالب فارغ');
+            }
+            if (!row.grade || row.grade.toString().trim() === '') {
+                errors.push('الصف فارغ');
+            }
+            if (!row.section || !normalizeValue(row.section, 'section')) {
+                errors.push('الشعبة فارغة أو غير صحيحة');
+            }
+            if (!row.zone || row.zone.toString().trim() === '') {
+                errors.push('المنطقة فارغة');
+            }
+            if (!row.phone || !normalizeValue(row.phone, 'phone')) {
+                errors.push('رقم الوالد فارغ أو غير صحيح');
+            }
+
+            if (students.some(s => s.id === normalizeValue(row.id, 'id'))) {
+                warnings.push('هذا الطالب موجود بالفعل في النظام');
+            }
+
+            return { errors, warnings, isValid: errors.length === 0 };
+        }
+
+        function previewImportFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('fileNameDisplay').textContent = `الملف المختار: ${file.name}`;
+
             const reader = new FileReader();
-            reader.onload = function(event) {
+            reader.onload = function(e) {
                 try {
-                    const data = new Uint8Array(event.target.result);
+                    const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                    
+
                     if (rows.length < 2) {
-                        showToast('❌ الملف فارغ!', 'error');
+                        showToast('❌ الملف فارغ أو لا يحتوي على بيانات!', 'error');
                         return;
                     }
-                    
-                    let importedCount = 0;
-                    let duplicates = 0;
-                    
-                    for (let i = 1; i < rows.length; i++) {
+
+                    importData = [];
+                    let validCount = 0, warningCount = 0, errorCount = 0;
+                    let previewHTML = '<table class="preview-table"><thead><tr><th>الحالة</th><th>التفاصيل</th><th>رقم الاسيس</th><th>الاسم</th><th>الصف</th><th>الشعبة</th></tr></thead><tbody>';
+
+                    for (let i = 1; i < Math.min(rows.length, 51); i++) {
                         const row = rows[i];
                         if (!row[0]) continue;
-                        
-                        if (students.some(s => s.id === row[0].toString())) {
-                            duplicates++;
-                            continue;
-                        }
-                        
-                        const newStudent = {
-                            id: row[0].toString(),
-                            name: row[1] || '',
-                            grade: row[2] || '',
-                            section: row[3] || '',
-                            zone: row[4] || '',
-                            phone: row[5] ? '0' + row[5].toString().substring(1) : ''
+
+                        const student = {
+                            id: normalizeValue(row[0], 'id'),
+                            name: normalizeValue(row[1], 'name'),
+                            grade: row[2] ? row[2].toString().trim() : '',
+                            section: normalizeValue(row[3], 'section'),
+                            zone: row[4] ? row[4].toString().trim() : '',
+                            phone: normalizeValue(row[5], 'phone')
                         };
-                        
-                        students.push(newStudent);
-                        
-                        if (db) {
-                            db.ref('students/' + newStudent.id).set(newStudent).catch(error => {
-                                console.error('خطأ في حفظ الطالب:', error);
-                            });
+
+                        const validation = validateStudent(student);
+
+                        let statusIcon = '✅';
+                        let statusClass = 'success';
+
+                        if (validation.errors.length > 0) {
+                            statusIcon = '❌';
+                            statusClass = 'error';
+                            errorCount++;
+                            previewHTML += `<tr style="background: #fef2f2;"><td>${statusIcon}</td><td style="color: var(--danger);">${validation.errors.join(', ')}</td><td>${student.id}</td><td>${student.name}</td><td>${student.grade}</td><td>${student.section}</td></tr>`;
+                        } else if (validation.warnings.length > 0) {
+                            statusIcon = '⚠️';
+                            statusClass = 'warning';
+                            warningCount++;
+                            previewHTML += `<tr style="background: #fffbeb;"><td>${statusIcon}</td><td style="color: var(--warning);">${validation.warnings.join(', ')}</td><td>${student.id}</td><td>${student.name}</td><td>${student.grade}</td><td>${student.section}</td></tr>`;
+                        } else {
+                            validCount++;
+                            previewHTML += `<tr style="background: #ecfdf5;"><td>${statusIcon}</td><td style="color: var(--secondary);">صحيح</td><td>${student.id}</td><td>${student.name}</td><td>${student.grade}</td><td>${student.section}</td></tr>`;
                         }
-                        
-                        importedCount++;
+
+                        if (validation.isValid) {
+                            importData.push(student);
+                        }
                     }
-                    
-                    loadStudents();
-                    closeImportModal();
-                    
-                    let message = `✅ تم استيراد ${importedCount} طالب بنجاح!`;
-                    if (duplicates > 0) {
-                        message += ` (تم تخطي ${duplicates} طالب مكرر)`;
+
+                    previewHTML += '</tbody></table>';
+
+                    document.getElementById('validCount').textContent = validCount;
+                    document.getElementById('warningCount').textContent = warningCount;
+                    document.getElementById('errorCount').textContent = errorCount;
+                    document.getElementById('importPreview').innerHTML = previewHTML;
+                    document.getElementById('importPreviewSection').style.display = 'block';
+                    document.getElementById('importBtn').disabled = importData.length === 0;
+
+                    if (importData.length > 0) {
+                        showToast(`✅ تم التحقق من البيانات: ${importData.length} طالب جاهز للاستيراد`, 'success');
+                    } else {
+                        showToast('❌ لا توجد بيانات صحيحة للاستيراد!', 'error');
                     }
-                    showToast(message, 'success');
+
                 } catch (error) {
                     console.error('خطأ في قراءة الملف:', error);
                     showToast('❌ خطأ في قراءة الملف. تأكد من صيغة الملف!', 'error');
                 }
             };
-            
+
             reader.readAsArrayBuffer(file);
+        }
+
+        function importExcel(e) {
+            e.preventDefault();
+
+            if (importData.length === 0) {
+                showToast('❌ لا توجد بيانات صحيحة للاستيراد!', 'error');
+                return;
+            }
+
+            let importedCount = 0;
+            const failedIds = [];
+
+            importData.forEach(student => {
+                students.push(student);
+
+                if (db) {
+                    db.ref('students/' + student.id).set(student).catch(error => {
+                        console.error('خطأ في حفظ الطالب:', error);
+                        failedIds.push(student.id);
+                    });
+                }
+
+                importedCount++;
+            });
+
+            loadStudents();
+            closeImportModal();
+
+            let message = `✅ تم استيراد ${importedCount} طالب بنجاح!`;
+            if (failedIds.length > 0) {
+                message += ` (فشل ${failedIds.length} أثناء الحفظ)`;
+            }
+            showToast(message, 'success');
+        }
+
+        function downloadTemplate() {
+            try {
+                const templateData = [
+                    {
+                        'رقم الاسيس': '12345',
+                        'الاسم': 'محمد أحمد علي',
+                        'الصف': 'Grade 5',
+                        'الشعبة': '1',
+                        'المنطقة': 'المرجان',
+                        'رقم الوالد': '0501234567'
+                    },
+                    {
+                        'رقم الاسيس': '12346',
+                        'الاسم': 'فاطمة حسن محمود',
+                        'الصف': 'Grade 4',
+                        'الشعبة': '2',
+                        'المنطقة': 'المنارة',
+                        'رقم الوالد': '0561234567'
+                    },
+                    {
+                        'رقم الاسيس': '12347',
+                        'الاسم': 'علي محمد عبدالله',
+                        'الصف': 'Grade 6',
+                        'الشعبة': '3',
+                        'المنطقة': 'الكرامة',
+                        'رقم الوالد': '0551234567'
+                    }
+                ];
+
+                const worksheet = XLSX.utils.json_to_sheet(templateData);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'الطلاب');
+
+                worksheet['!cols'] = [
+                    { wch: 15 },
+                    { wch: 20 },
+                    { wch: 12 },
+                    { wch: 8 },
+                    { wch: 15 },
+                    { wch: 15 }
+                ];
+
+                const fileName = 'نموذج_استيراد_الطلاب.xlsx';
+                XLSX.writeFile(workbook, fileName);
+                showToast('✅ تم تحميل النموذج بنجاح!', 'success');
+            } catch (error) {
+                console.error('خطأ في تحميل النموذج:', error);
+                showToast('❌ حدث خطأ في تحميل النموذج!', 'error');
+            }
         }
         
         function exportStudentsToExcel() {
